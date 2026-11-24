@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#08090b">
+  <meta name="color-scheme" content="dark">
+  <title>项目计划 · 个人管理</title>
+  <link rel="stylesheet" href="/static/planner.css?v=4">
+  <link rel="stylesheet" href="/static/nav.css?v=4">
+  <script defer src="/static/nav.js?v=1"></script>
+</head>
+<body class="planner-page">
+  {% set active_page = 'planner' %}{% include "_nav.html" %}
+  <header class="plan-top">
+    <div class="plan-brand">
+      <div>
+        <strong>项目计划</strong>
+        <small>PROJECTS &amp; TASKS</small>
+      </div>
+    </div>
+    <div class="plan-actions">
+      <button class="ghost-btn" id="batchBtn" type="button">批量</button>
+      <button class="ghost-btn" id="trashBtn" type="button">回收站</button>
+      <button class="add-btn" id="newProjectBtn" type="button"><span>＋</span>新建项目</button>
+    </div>
+  </header>
+
+  <main class="plan-board" id="board">
+    <div class="plan-loading">正在读取规划…</div>
+  </main>
+
+  <div class="batch-bar" id="batchBar" hidden>
+    <span id="batchCount">已选 0 项</span>
+    <div>
+      <button class="batch-cancel" id="batchCancel" type="button">取消</button>
+      <button class="batch-delete" id="batchDelete" type="button">删除选中</button>
+    </div>
+  </div>
+
+  <aside class="trash-drawer" id="trashDrawer" hidden>
+    <header>
+      <div>
+        <strong>回收站</strong>
+        <small>归档的项目与任务</small>
+      </div>
+      <button id="trashClose" type="button" aria-label="关闭回收站">×</button>
+    </header>
+    <div class="trash-list" id="trashList"></div>
+  </aside>
+  <div class="drawer-backdrop" id="drawerBackdrop" hidden></div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+
+  <section class="sheet" id="projectSheet" role="dialog" aria-modal="true" aria-labelledby="projectSheetTitle" hidden>
+    <header class="sheet-head">
+      <h2 id="projectSheetTitle">新建项目</h2>
+      <button class="sheet-close" id="projectClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="sheet-body">
+      <div class="sheet-field">
+        <span>分类</span>
+        <div class="cat-seg" id="projectCategory"></div>
+      </div>
+      <label class="sheet-field">
+        <span>项目名</span>
+        <input id="projectName" type="text" maxlength="40" placeholder="项目名称" autocomplete="off">
+      </label>
+      <div class="sheet-row">
+        <label class="sheet-field">
+          <span>开始日期</span>
+          <input id="projectStart" type="date">
+        </label>
+        <label class="sheet-field">
+          <span>周期</span>
+          <select id="projectPeriod">
+            <option value="0">无</option>
+            <option value="7">1 周</option>
+            <option value="14">2 周</option>
+            <option value="30" selected>1 个月</option>
+            <option value="90">3 个月</option>
+            <option value="custom">自定义</option>
+          </select>
+        </label>
+      </div>
+      <label class="sheet-field" id="projectDaysField" hidden>
+        <span>周期天数</span>
+        <input id="projectDays" type="number" min="1" max="3650" step="1" value="30">
+      </label>
+      <div class="sheet-field">
+        <span>截止日期 <em class="field-note">单独强调，可以加多个</em></span>
+        <div class="deadline-list" id="deadlineList"></div>
+        <button class="deadline-add" id="deadlineAdd" type="button">＋ 添加截止日期</button>
+      </div>
+    </div>
+    <footer class="sheet-foot">
+      <span class="sheet-hint" id="projectHint">周期从开始日期算；截止日期可加多个，卡片上用感叹号标出。</span>
+      <div class="sheet-actions">
+        <button class="sheet-cancel" id="projectCancel" type="button">取消</button>
+        <button class="sheet-save" id="projectSave" type="button">保存</button>
+      </div>
+    </footer>
+  </section>
+
+  <section class="sheet" id="taskSheet" role="dialog" aria-modal="true" aria-labelledby="taskSheetTitle" hidden>
+    <header class="sheet-head">
+      <h2 id="taskSheetTitle">新建任务</h2>
+      <button class="sheet-close" id="taskClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="sheet-body">
+      <label class="sheet-field">
+        <span>任务名</span>
+        <input id="taskName" type="text" maxlength="60" placeholder="任务内容" autocomplete="off">
+      </label>
+      <div class="sheet-row">
+        <label class="sheet-field">
+          <span>时限</span>
+          <select id="taskLimit">
+            <option value="0" selected>无</option>
+            <option value="3">3 天</option>
+            <option value="7">1 周</option>
+            <option value="14">2 周</option>
+            <option value="30">1 个月</option>
+            <option value="custom">自定义</option>
+          </select>
+        </label>
+        <label class="sheet-field" id="taskDaysField" hidden>
+          <span>天数</span>
+          <input id="taskDays" type="number" min="1" max="3650" step="1" value="7">
+        </label>
+        <div class="sheet-field">
+          <span>截止</span>
+          <strong class="due-preview" id="taskDuePreview">无</strong>
+        </div>
+      </div>
+    </div>
+    <footer class="sheet-foot">
+      <span class="sheet-hint">时限从项目创建日算起；任务会排在项目下面。</span>
+      <div class="sheet-actions">
+        <button class="sheet-cancel" id="taskCancel" type="button">取消</button>
+        <button class="sheet-save" id="taskSave" type="button">保存</button>
+      </div>
+    </footer>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#32d74b" opacity=".16"/><path d="M6 10.2l2.6 2.6L14 7.2" fill="none" stroke="#32d74b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span></span>
+  </div>
+  <script src="/static/planner.js?v=4"></script>
+</body>
+</html>

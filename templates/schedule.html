@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="description" content="周视图日程：按任务类型上色，新建分时段与提醒，每周自动清理上一周">
+  <title>日程安排 · 个人管理</title>
+  <link rel="stylesheet" href="/static/style.css?v=66">
+  <link rel="stylesheet" href="/static/nav.css?v=4">
+  <link rel="stylesheet" href="/static/schedule.css?v=5">
+  <script defer src="/static/nav.js?v=1"></script>
+</head>
+<body class="schedule-page">
+  {% set active_page = 'schedule' %}{% include "_nav.html" %}
+  <div class="sched-app">
+    <aside class="sched-side">
+      <div class="side-brand">
+        <span class="sched-mark">日</span>
+        <div><strong>日程安排</strong><small>WEEKLY PLANNER</small></div>
+      </div>
+
+      <div class="side-label">任务类型</div>
+      <ul class="cat-list" id="catList"></ul>
+
+      <div class="side-stats" id="sideStats">—</div>
+
+      <div class="side-label">操作</div>
+      <button class="side-clear" id="clearWeek" type="button">清除本周至今</button>
+      <p class="side-note">每周一自动清除上一周的任务。过去周只读。</p>
+
+    </aside>
+
+    <main class="sched-main">
+      <header class="sched-head">
+        <div class="sched-title">
+          <span class="sched-eyebrow" id="weekLabel">本周</span>
+          <h1 id="monthTitle">—</h1>
+        </div>
+        <div class="sched-actions">
+          <div class="week-nav">
+            <button class="nav-btn" id="prevWeek" type="button" aria-label="上一周">‹</button>
+            <button class="nav-today" id="todayBtn" type="button">今天</button>
+            <button class="nav-btn" id="nextWeek" type="button" aria-label="下一周">›</button>
+          </div>
+          <button class="add-btn" id="addBtn" type="button"><span>＋</span>新建</button>
+        </div>
+      </header>
+
+      <div class="week-head">
+        <div class="head-gutter"></div>
+        <div class="head-days" id="headDays"></div>
+      </div>
+
+      <div class="grid-scroll" id="gridScroll">
+        <div class="grid-inner">
+          <div class="time-gutter" id="timeGutter"></div>
+          <div class="week-grid" id="weekGrid"></div>
+        </div>
+      </div>
+
+      <p class="sched-empty" id="schedEmpty" hidden>这一周还没有任务，点右上角「＋ 新建」。</p>
+    </main>
+  </div>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" hidden></div>
+  <section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+    <header class="sheet-head">
+      <h2 id="sheetTitle">新建事项</h2>
+      <button class="sheet-close" id="sheetClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="sheet-body">
+      <label class="sheet-field">
+        <span>事项名</span>
+        <input id="itemTitle" type="text" maxlength="40" placeholder="做什么" autocomplete="off">
+      </label>
+
+      <div class="sheet-field">
+        <span>类型</span>
+        <div class="kind-seg" id="kindSeg" role="group" aria-label="事项类型">
+          <button type="button" data-kind="block" class="active">分时段</button>
+          <button type="button" data-kind="reminder">提醒</button>
+        </div>
+      </div>
+
+      <div class="sheet-row">
+        <label class="sheet-field">
+          <span>日期</span>
+          <input id="itemDate" type="date">
+        </label>
+        <label class="sheet-field">
+          <span>开始</span>
+          <input id="itemStart" type="time" step="300">
+        </label>
+        <label class="sheet-field" id="endField">
+          <span>结束</span>
+          <input id="itemEnd" type="time" step="300">
+        </label>
+      </div>
+
+      <div class="sheet-field">
+        <span>任务类型</span>
+        <div class="cat-pick" id="catPick"></div>
+      </div>
+    </div>
+    <footer class="sheet-foot">
+      <span class="sheet-hint" id="sheetHint">默认持续 1 小时；可安排 07:00 到次日 01:00。</span>
+      <div class="sheet-actions">
+        <button class="sheet-cancel" id="sheetCancel" type="button">取消</button>
+        <button class="sheet-save" id="sheetSave" type="button">保存</button>
+      </div>
+    </footer>
+  </section>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#32d74b" opacity=".16"/><path d="M6 10.2l2.6 2.6L14 7.2" fill="none" stroke="#32d74b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span></span>
+  </div>
+  <script src="/static/schedule.js?v=3"></script>
+</body>
+</html>

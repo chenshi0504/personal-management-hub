@@ -1,0 +1,48 @@
+.journal-page { font-family: "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", sans-serif; }
+.journal-main, .journal-nav { width: min(1160px, calc(100% - 40px)); margin: 0 auto; }
+.journal-nav, .journal-nav nav, .journal-heading, .journal-dateline, .journal-section, .card-meta { display: flex; align-items: center; gap: 12px; }
+.journal-nav { min-height: 62px; justify-content: space-between; }
+.journal-nav nav { gap: 2px; }
+.journal-nav .icon-button { font-size: 23px; }
+.journal-nav input { border: 0; background: transparent; color: var(--text); padding: 5px; }
+.journal-nav button:disabled { opacity: .35; }
+.journal-main { padding: 32px 0 40px; }
+.journal-page h1, .journal-page h2, .journal-page h3 { font-family: "Microsoft YaHei", "微软雅黑", sans-serif; line-height: 1.35; letter-spacing: 0; }
+.journal-page h1 { font-size: 26px; }
+.journal-dateline, .card-meta, #projectCount, .journal-page footer, .folder { color: var(--muted); font-size: 13px; }
+.journal-dateline { flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+.journal-overview { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 32px; border-block: 1px solid var(--line-strong); padding: 22px 0; margin: 22px 0 28px; }
+.journal-page h2 { font-size: 18px; }
+#summary { font-size: 17px; line-height: 1.8; margin-top: 9px; overflow-wrap: anywhere; }
+#metrics { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 14px; }
+#metrics dt { color: var(--muted); font-size: 13px; }
+#metrics dd { font: 600 21px/1.5 "Segoe UI", "Microsoft YaHei", sans-serif; }
+#metrics small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.journal-section { justify-content: space-between; margin-bottom: 12px; }
+#projects { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.journal-card { border: 1px solid var(--line-strong); border-radius: 8px; padding: 17px 20px 18px; background: var(--surface); overflow-wrap: anywhere; }
+.card-meta { justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.category { font-weight: 600; }
+.journal-page mark { background: transparent; font-weight: 700; }
+.journal-card[data-kind="科研"] .category, .journal-page mark[data-kind="科研"] { color: #91d8a3; }
+.journal-card[data-kind="项目开发"] .category, .journal-page mark[data-kind="项目开发"] { color: #8dc8f4; }
+.journal-page h3 { font-size: 21px; margin: 6px 0 2px; }
+.folder { font: 12px/1.5 "Cascadia Mono", "Microsoft YaHei", monospace; }
+.journal-card ul { list-style: none; }
+.journal-card li { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; line-height: 1.65; }
+.journal-card li strong { display: block; font-size: 14px; }
+.journal-card li p { color: #c5c7cd; font-size: 14px; margin-top: 2px; }
+.journal-page footer { margin-top: 22px; }
+@media (max-width: 820px) {
+  .journal-overview { grid-template-columns: 1fr; gap: 16px; }
+}
+@media (max-width: 620px) {
+  .journal-main, .journal-nav { width: calc(100% - 28px); }
+  .journal-main { padding-top: 22px; }
+  .journal-page h1 { font-size: 21px; }
+  #projects { grid-template-columns: minmax(0, 1fr); }
+  #metrics { gap: 8px; }
+  #metrics dd { font-size: 18px; }
+  .journal-nav { gap: 3px; }
+  .journal-nav .journal-link { padding: 0 8px; }
+}

@@ -1,0 +1,19 @@
+<header class="mgmt-bar">
+  <div class="mgmt-inner">
+    <a class="mgmt-brand" href="/planner" title="个人管理">
+      <span class="mgmt-mark">人</span>
+      <span class="mgmt-title">个人管理</span>
+    </a>
+    <nav class="mgmt-tabs" aria-label="个人管理子页面">
+      <a class="mgmt-tab{{ ' is-active' if active_page == 'planner' }}" href="/planner">项目计划</a>
+      <a class="mgmt-tab{{ ' is-active' if active_page == 'schedule' }}" href="/schedule">日程安排</a>
+      <a class="mgmt-tab{{ ' is-active' if active_page == 'sport' }}" href="/sport">体育兴趣</a>
+      <a class="mgmt-tab{{ ' is-active' if active_page == 'study' }}" href="/time">时间统计</a>
+      <a class="mgmt-tab{{ ' is-active' if active_page == 'journal' }}" href="/journal">工作日志</a>
+    </nav>
+    <time class="mgmt-clock" id="mgmtClock">
+      <span class="clock-date" id="clockDate">—</span>
+      <span class="clock-time" id="clockTime">--:--</span>
+    </time>
+  </div>
+</header>

@@ -1,0 +1,361 @@
+/* 体育兴趣：运动 / 兴趣切换；兴趣与运动同构，用月历面板 */
+
+.sport-bar {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: min(1360px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 16px 0 0;
+}
+.sport-switch {
+  display: inline-flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .04);
+}
+.sport-tab {
+  padding: 6px 18px;
+  border: 0;
+  border-radius: 8px;
+  color: #9c9ea8;
+  background: transparent;
+  font-size: 13px;
+  cursor: pointer;
+  transition: color .16s ease, background .16s ease;
+}
+.sport-tab:hover { color: #eceef4; }
+.sport-tab.is-active {
+  color: #10141b;
+  background: #e9edf5;
+  font-weight: 600;
+}
+.sport-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+
+/* ---------- 兴趣视图 ---------- */
+
+.hobby-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1360px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: 18px 0 calc(48px + env(safe-area-inset-bottom));
+}
+.sport-page.is-hobby .ambient-one { background: rgba(180, 142, 222, .18); }
+.sport-page.is-hobby .ambient-two { background: rgba(143, 214, 148, .1); }
+.sport-page.is-hobby .eyebrow { color: #b48ede; }
+.sport-page.is-hobby .sport-tools { display: none; }
+.sport-page.is-hobby .train-top {
+  background: linear-gradient(135deg, rgba(180, 142, 222, .14), rgba(20, 21, 25, .94) 48%);
+}
+
+.hobby-side { display: flex; align-items: center; gap: 12px; flex: none; }
+.hobby-month {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, .03);
+}
+.hobby-month input {
+  border: 0;
+  background: transparent;
+  color: #cbb2ea;
+  font-size: 12px;
+  padding: 4px 2px;
+}
+.hobby-month input::-webkit-calendar-picker-indicator {
+  filter: invert(70%) sepia(20%) saturate(600%) hue-rotate(230deg);
+}
+.hobby-month .icon-button { width: 26px; height: 26px; }
+
+/* 日历格子：按兴趣类别着色 */
+#hobbyGrid .cal-day { gap: 3px; min-height: 96px; }
+#hobbyGrid .cal-day.is-blank { border-color: rgba(255, 255, 255, .1); }
+#hobbyGrid .cal-day.is-planned {
+  border-color: color-mix(in srgb, var(--hb) 44%, transparent);
+  background: transparent;
+}
+#hobbyGrid .cal-day.is-recorded {
+  border-color: color-mix(in srgb, var(--hb) 58%, transparent);
+  background: color-mix(in srgb, var(--hb) 15%, transparent);
+}
+#hobbyGrid .cal-day:hover {
+  background: color-mix(in srgb, var(--hb) 11%, rgba(255, 255, 255, .03));
+  border-color: color-mix(in srgb, var(--hb) 62%, transparent);
+}
+#hobbyGrid .cal-day.is-today .cal-date { color: color-mix(in srgb, var(--hb) 65%, #dfe6f2); }
+
+.hb-line {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 100%;
+  color: color-mix(in srgb, var(--hb) 52%, #e7ecf4);
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hb-line i {
+  flex: none;
+  width: 5px;
+  height: 5px;
+  border-radius: 2px;
+  background: currentColor;
+}
+.hb-line.is-plan { opacity: .82; }
+.hb-line.is-plan span { text-decoration: underline dotted; text-underline-offset: 2px; }
+.hb-line.is-more { color: var(--soft); font-size: 10px; }
+
+/* 当天条目列表 */
+.hobby-list { display: flex; flex-direction: column; gap: 6px; margin: 12px 0 2px; }
+.hb-entry {
+  --hb: #8e8e93;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .07);
+  border-left: 2px solid var(--hb);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .022);
+}
+.hb-entry.is-plan { border-style: dashed; border-left-style: solid; }
+.hb-entry-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+  background: var(--hb);
+}
+.hb-entry-main { flex: 1; min-width: 0; }
+.hb-entry-title {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  color: #eef1f7;
+  background: transparent;
+  font-size: 12.5px;
+  line-height: 1.5;
+  text-align: left;
+  cursor: pointer;
+}
+.hb-entry-title:hover { color: color-mix(in srgb, var(--hb) 55%, #fff); }
+.hb-entry.is-plan .hb-entry-title { color: #d7dbe4; }
+.hb-entry-meta { display: block; margin-top: 1px; color: var(--soft); font-size: 10.5px; }
+.hb-entry-actions { display: flex; flex: none; gap: 4px; }
+.hb-entry-actions button {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .08);
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+.hb-entry-actions button:hover { color: #fff; background: rgba(255, 255, 255, .07); }
+.hb-entry-actions .is-check { color: color-mix(in srgb, var(--hb) 60%, #cfd6e2); }
+.hb-empty { padding: 12px 0; color: var(--soft); font-size: 12px; }
+
+/* ---------- 计划 / 记录 弹层 ---------- */
+
+.hs-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: rgba(0, 0, 0, .62);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+.hobby-sheet {
+  --hb: #8e8e93;
+  position: fixed;
+  z-index: 201;
+  left: 50%;
+  top: 50%;
+  width: min(430px, calc(100% - 32px));
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  padding: 18px 20px 16px;
+  border: 1px solid color-mix(in srgb, var(--hb) 34%, rgba(255, 255, 255, .1));
+  border-radius: 16px;
+  background: #121319;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .6);
+  transform: translate(-50%, -50%);
+}
+.hs-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, .07);
+}
+.hs-eyebrow { color: color-mix(in srgb, var(--hb) 60%, #cfd4de); font-size: 10.5px; letter-spacing: 1px; }
+.hs-head h2 { margin: 4px 0 0; font-size: 17px; font-weight: 600; }
+.hs-close {
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 8px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .04);
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+}
+.hs-close:hover { color: #fff; }
+
+.hs-body { display: flex; flex-direction: column; gap: 12px; padding: 14px 0 4px; }
+.hs-field { display: flex; flex-direction: column; gap: 6px; }
+.hs-label { color: var(--soft); font-size: 10.5px; letter-spacing: .4px; }
+.hs-field input[type="date"],
+.hs-field input[type="number"],
+.hs-field textarea {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 9px;
+  color: var(--text);
+  background: rgba(0, 0, 0, .26);
+  font-size: 13px;
+  color-scheme: dark;
+}
+.hs-field textarea { resize: vertical; font-family: inherit; line-height: 1.6; }
+.hs-field input:focus, .hs-field textarea:focus {
+  outline: none;
+  border-color: color-mix(in srgb, var(--hb) 60%, transparent);
+}
+
+.hs-seg { display: flex; gap: 4px; padding: 3px; border-radius: 9px; background: rgba(255, 255, 255, .05); }
+.hs-seg button {
+  flex: 1;
+  padding: 6px 0;
+  border: 0;
+  border-radius: 7px;
+  color: var(--muted);
+  background: transparent;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.hs-seg.is-five button { font-size: 11.5px; }
+.hs-seg button.is-active {
+  color: #0f131a;
+  background: color-mix(in srgb, var(--hb) 72%, #fff);
+  font-weight: 600;
+}
+
+.hs-chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.hs-chips button {
+  padding: 5px 9px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 7px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .03);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.hs-chips button:hover { color: #eef1f7; border-color: rgba(255, 255, 255, .2); }
+.hs-chips button.is-active {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--hb) 70%, transparent);
+  background: color-mix(in srgb, var(--hb) 24%, transparent);
+}
+
+.hs-check { display: inline-flex; align-items: center; gap: 7px; color: var(--muted); font-size: 12px; }
+.hs-check input { width: 14px; height: 14px; accent-color: var(--hb); }
+.hs-minutes { display: flex; align-items: center; gap: 8px; }
+.hs-minutes > input { width: 88px; }
+.hs-minutes > span { flex: none; color: var(--soft); font-size: 11px; white-space: nowrap; }
+.hs-quick { display: flex; gap: 4px; margin-left: auto; }
+.hs-quick button {
+  padding: 4px 7px;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: 6px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, .03);
+  font-size: 10.5px;
+  cursor: pointer;
+}
+.hs-quick button:hover {
+  color: #fff;
+  border-color: color-mix(in srgb, var(--hb) 55%, transparent);
+  background: color-mix(in srgb, var(--hb) 22%, transparent);
+}
+
+.hs-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, .07);
+}
+.hs-actions { display: flex; gap: 8px; margin-left: auto; }
+.hs-cancel, .hs-save, .hs-delete {
+  padding: 8px 16px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.hs-cancel { border: 1px solid rgba(255, 255, 255, .12); color: var(--muted); background: transparent; }
+.hs-save { border: 1px solid transparent; color: #0f131a; background: color-mix(in srgb, var(--hb) 78%, #fff); font-weight: 600; }
+.hs-save:hover { background: color-mix(in srgb, var(--hb) 90%, #fff); }
+.hs-delete { border: 1px solid rgba(250, 45, 85, .35); color: #ff8a9c; background: rgba(250, 45, 85, .1); }
+.hs-delete:hover { background: rgba(250, 45, 85, .2); }
+
+.hs-field[hidden],
+.hobby-sheet[hidden],
+.hs-backdrop[hidden] { display: none; }
+
+@media (max-width: 860px) {
+  .sport-bar {
+    flex-wrap: wrap;
+    gap: 10px;
+    width: calc(100% - 28px);
+  }
+  .sport-tools { width: 100%; margin-left: 0; }
+  .sport-tools .journal-link { display: none; }
+  .hobby-shell { width: calc(100% - 28px); }
+  .hobby-side { flex-direction: column; align-items: stretch; gap: 10px; }
+  .hobby-month { align-self: flex-start; }
+  .hobby-side .train-metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .hobby-side .metric { min-width: 0; padding: 8px 10px; }
+  #hobbyGrid .cal-day { min-height: 84px; padding: 5px 5px 22px; }
+  .hb-line { font-size: 9.5px; gap: 3px; }
+  .hb-line i { width: 4px; height: 4px; }
+  .hb-line.is-more { font-size: 9px; }
+}
+@media (max-width: 560px) {
+  .hb-entry-actions button { width: 28px; height: 28px; }
+}
+
+#hobbyGrid .rec-entry { cursor: pointer; }
+#hobbyGrid .rec-entry:hover { color: #fff; border-color: rgba(255, 255, 255, .3); background: rgba(255, 255, 255, .1); }
+
+/* 兴趣详情的按钮跟着兴趣色走 */
+#hobbyDetail .btn-primary {
+  color: #17111f;
+  border-color: transparent;
+  background: #b9a0ea;
+}
+#hobbyDetail .btn-primary:hover { background: #c9b4f2; }
+#hobbyDetail .mode-note { color: var(--soft); }

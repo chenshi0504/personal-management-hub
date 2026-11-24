@@ -1,0 +1,12 @@
+# 数据与缓存
+*.db
+*.sqlite
+__pycache__/
+*.pyc
+.venv/
+venv/
+.DS_Store
+
+# 个人日志正文
+static/journals/*.json
+!static/journals/2026-11-23.json

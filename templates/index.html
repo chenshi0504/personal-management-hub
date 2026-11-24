@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0c">
+  <meta name="color-scheme" content="dark">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="按月份记录核心科研、项目开发、其它事务、运动兴趣四类时长的本地仪表盘">
+  <title>时间统计 · 个人管理</title>
+  <link rel="stylesheet" href="/static/style.css?v=66">
+  <link rel="stylesheet" href="/static/nav.css?v=4">
+  <script defer src="/static/nav.js?v=1"></script>
+
+<!-- FONT-SPEC v1 BEGIN（tools/apply_font_spec.py 写入，勿手改）-->
+<style>
+/* ==========================================================================
+   平台字体规范 v1 · 唯一源文件（shared/font-spec.css）
+   由 tools/apply_font_spec.py 写入各平台样式表，勿直接改平台内副本。
+
+   中文正文 .................. 微软雅黑 Microsoft YaHei
+   中文页签 / 标题 / 阶段 .... 微软雅黑 Microsoft YaHei
+   英文 / 文件名 / 代码 ...... Cascadia Mono
+   界面数字 / 用量指标 ....... Segoe UI Variable Text（等宽数字）
+   代码内数字 / 任务编号 ..... Cascadia Mono
+   ========================================================================== */
+
+:root{
+  --fs-sans: "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --fs-head: "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --fs-mono: "Cascadia Mono", "Cascadia Code", Consolas, "Microsoft YaHei", monospace;
+  --fs-num: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+
+  /* 兼容各平台既有的字体变量名，避免逐条改写 */
+  --font: var(--fs-sans);
+  --font-sans: "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --font-body: "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --font-text: "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --font-ui: "Microsoft YaHei", "微软雅黑", "Microsoft YaHei UI", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --sans: var(--fs-sans);
+  --ui: var(--fs-sans);
+  --mono: var(--fs-mono);
+  --font-mono: var(--fs-mono);
+  --code: var(--fs-mono);
+  --font-code: var(--fs-mono);
+  --font-display: var(--fs-head);
+  --display: var(--fs-head);
+  --num: var(--fs-num);
+  --font-num: var(--fs-num);
+}
+
+/* 1 · 中文正文 ----------------------------------------------------------- */
+html, body,
+button, input, select, textarea, option, optgroup,
+label, legend, fieldset,
+table, caption, th, td, thead, tbody, tfoot,
+p, li, dd, dt, blockquote, figcaption, small, strong, b, em, i, u, s{
+  font-family: var(--fs-sans);
+}
+
+body{
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* 2 · 中文页签 / 建模标题 / 阶段名称 ------------------------------------ */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6,
+.tab, .tabs, .tabs a, .tabs button, .tabs li, .tabs span,
+.tab-item, .tab-link, .tab-btn, .tab-title, .tab-name, .tab-label,
+[role="tab"], [role="tablist"] > *,
+[class$="-tab"], [class$="-tabs"], [class*="-tab "], [class*="-tabs "], [class$="-tab__name"],
+.stage, .stage-name, .stage-title, .stage-head, .stage-nav > *, .stage-label, .stage-lead,
+.pipeline-step, .step-btn, .step-name, .step-t, .step-label, [class$="-step"], [class*="-step "],
+.phase, .phase-name, .phase-title, .layer-name, .layer-title,
+.model-title, .modeling-title, .model-name, .model-head,
+.panel-title, .card-title, .section-title, .block-title, .sec-title, .module-title, .pane-title,
+.hero-title, .page-title, .doc-title{
+  font-family: var(--fs-head);
+}
+
+h1 *, h2 *, h3 *, h4 *, h5 *, h6 *,
+.tab *, .tabs *, [role="tab"] *, .stage-head *, .step-name *, .panel-title *, .card-title *{
+  font-family: inherit;
+}
+
+/* 3 · 英文 / 文件名 / 代码 ---------------------------------------------- */
+code, pre, kbd, samp, tt, var,
+.mono, [class$="-mono"], [class*="-mono "],
+.code, .codeblock, .code-block, .snippet, [class$="-code"], [class*="-code "],
+.path, .file, .filename, .file-name, .filepath, .file-path, .dir, .folder, .pkg, .module-name,
+.id, [class$="-id"], .hash, .slug, .sha, .cmd, .command, .url, .endpoint, .route, .flag, .env-key,
+.port, .addr, .host, .ip, .ver, .version, .sha1, .md5, .checksum,
+textarea.editor, textarea[name="source"], textarea[name="body"],
+#codeInput, #patchText, #f-body, #stub-params,
+.eyebrow, .kicker, .label-en, .tag-en{
+  font-family: var(--fs-mono);
+}
+
+pre *, code *, kbd *, samp *, .mono *{
+  font-family: inherit;
+}
+
+/* 4 · 普通界面数字 / 用量指标（等宽数字，便于上下对齐） ------------------ */
+.num, .number, .value, .count, .count-num, .big-num, .big-number,
+.metric, .metric-value, .metric-num, .stat, .stat-value, .stat-num,
+.kpi, .kpi strong, .kpi-value, .kpi-num,
+.usage, .usage-value, .usage-num, .quota, .quota-value,
+.token-count, .token-usage, .tokens, .cost, .duration, .elapsed, .rate, .ratio, .pct, .percent,
+.progress-value, .score, .rank, .index-value,
+time, .date, .date-num, .timestamp, .mini-date, .skill-date, .meta-num,
+[class$="-count"], [class$="-num"], [class$="-value"], [class$="-pct"], [class$="-percent"],
+[class*="metric"], [class*="usage"], [class*="quota"], [class*="kpi"]{
+  font-family: var(--fs-num);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* 5 · 代码中的数字 / 任务编号仍用等宽 ------------------------------------ */
+pre .num, pre .number, pre .id, pre .value, pre .count, pre .token, pre .pct,
+code .num, code .number, code .id, code .value, code .token,
+.task-id, .job-id, .run-id, .step-num, .issue-no, .ticket-no, .serial,
+[class$="-task-id"], [class$="-job-id"], [class$="-run-id"]{
+  font-family: var(--fs-mono);
+  font-variant-numeric: normal;
+}
+
+pre, code, kbd, samp, .mono{
+  font-variant-numeric: normal;
+  font-feature-settings: normal;
+}
+</style>
+<!-- FONT-SPEC v1 END -->
+</head>
+<body>
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
+
+  {% set active_page = 'study' %}{% include "_nav.html" %}
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <a class="brand" href="/" aria-label="学习时间月度记录首页">
+        <span class="brand-mark">时</span>
+        <span class="brand-text"><strong>学习时间</strong><small>MONTHLY LOG</small></span>
+      </a>
+      <div class="month-control" aria-label="月份选择">
+        <button class="icon-button" id="prevMonth" type="button" aria-label="上一个月" title="上一个月">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+        </button>
+        <label>
+          <span>当前记录</span>
+          <input id="monthPicker" type="month" value="">
+        </label>
+        <button class="icon-button" id="nextMonth" type="button" aria-label="下一个月" title="下一个月">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg>
+        </button>
+      </div>
+      <div class="live-indicator"><i></i><span>本机实时保存</span></div>
+      <a class="journal-link is-red" id="journalLink" href="/journal" title="工作日志">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.6C10.4 5 8.4 4.4 6 4.4H4.2v13.2H6c2.4 0 4.4.6 6 2.2 1.6-1.6 3.6-2.2 6-2.2h1.8V4.4H18c-2.4 0-4.4.6-6 2.2Z"/><path d="M12 6.6v13.2"/></svg>工作日志
+      </a>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <h1 class="sr-only">学习时间 · 月度概览</h1>
+
+    <section class="chart-panel" aria-labelledby="chartTitle">
+      <div class="chart-heading">
+        <div>
+          <span class="eyebrow">每日分布</span>
+          <h2 id="chartTitle">学习与运动时长</h2>
+        </div>
+        <span class="range-pill" id="chartRange">—</span>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-y-axis" id="chartYAxis"></div>
+        <div class="chart-scroll">
+          <div class="chart-main">
+            <div class="chart-grid-lines" id="chartGridLines"></div>
+            <div class="stack-chart" id="stackChart"><div class="loading">正在绘制图表…</div></div>
+            <div class="chart-avg-line" id="chartAvgLine" hidden><i></i><span></span></div>
+            <div class="chart-x-axis" id="chartXAxis"></div>
+            <div class="chart-tooltip" id="chartTooltip" role="tooltip" hidden></div>
+            <p class="chart-empty" id="chartEmpty" hidden>本月还没有记录<span>点击下方任一日期开始填写</span></p>
+          </div>
+        </div>
+      </div>
+      <div class="chart-legend">
+        <div class="legend-group" id="legendLegacy">
+          <b>10/24 及以前</b>
+          <button class="legend-help" id="legendLegacyHelp" type="button" aria-label="查看 10/25 前旧统计说明" aria-expanded="false" aria-describedby="legendLegacyTip">
+            ?
+            <span class="legend-help-tip" id="legendLegacyTip" role="tooltip">10/24 及以前为旧统计：上午 / 下午 / 晚上 + 运动（绿色 + 蓝色）；历史数据已锁定，不可修改。</span>
+          </button>
+        </div>
+        <div class="legend-group" id="legendNew">
+          <b>10/25 起</b>
+          <span><i class="llm"></i>核心科研</span>
+          <span><i class="research"></i>项目开发</span>
+          <span><i class="work"></i>其它事务</span>
+          <span><i class="sport-new"></i>运动兴趣</span>
+        </div>
+        <span class="legend-avg"><i class="avg"></i>当月日均</span>
+        <small>柱顶数字为当日学习 + 运动总时长；红色虚线为当月日均时长（小时）；周序号之间为当周学习总时长（不含运动）</small>
+      </div>
+      <form class="quick-editor" id="quickEditor" novalidate>
+        <div class="quick-editor-title">
+          <span id="quickModeLabel">当天记录</span>
+          <strong id="quickDateLabel">选择一根柱子开始</strong>
+          <small id="quickSaveState">0.5 小时为单位，修改后保存</small>
+        </div>
+        <div class="quick-fields">
+          <div class="quick-date">
+            <span>日期</span>
+            <button class="date-trigger" id="dateTrigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="选择记录日期">
+              <span id="dateTriggerText">选择日期</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10l4 4 4-4"/></svg>
+            </button>
+            <input id="quickDate" type="hidden" value="">
+          </div>
+          <div class="quick-values" id="legacyValues">
+            <label class="quick-field morning"><span>上午</span><input id="quickMorning" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+            <label class="quick-field afternoon"><span>下午</span><input id="quickAfternoon" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+            <label class="quick-field evening"><span>晚上</span><input id="quickEvening" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+            <label class="quick-field sport"><span>运动</span><input id="quickSport" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+          </div>
+          <div class="quick-values new-values" id="newValues" hidden>
+            <label class="quick-field llm"><span>核心科研</span><input id="quickLlm" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+            <label class="quick-field research"><span>项目开发</span><input id="quickResearch" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+            <label class="quick-field work"><span>其它事务</span><input id="quickWork" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+            <label class="quick-field sport-new"><span>运动兴趣</span><input id="quickNewSport" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
+            <label class="quick-field sleep-score" id="sleepScoreInline" hidden>
+              <span id="sleepScoreLabel">睡眠评分</span>
+              <input id="sleepScore" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" aria-label="iWatch 睡眠评分">
+            </label>
+            <div class="sleep-toggle-wrap" id="sleepToggleWrap">
+              <span>睡眠</span>
+              <button class="sleep-toggle" id="sleepToggle" type="button" aria-expanded="false" aria-controls="sleepPanel">
+                <span id="sleepToggleSummary">未填写</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10l4 4 4-4"/></svg>
+              </button>
+            </div>
+          </div>
+          <button class="quick-save" id="quickSaveButton" type="submit">保存当天</button>
+        </div>
+        <div class="sleep-panel" id="sleepPanel" hidden>
+          <div class="sleep-panel-fields">
+            <label id="sleepTimeField">
+              <span>睡眠时间</span>
+              <button class="time-trigger" id="sleepTimeTrigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="选择睡眠时间">
+                <span id="sleepTimeText">选择</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10l4 4 4-4"/></svg>
+              </button>
+              <input id="sleepTime" type="hidden" value="">
+            </label>
+            <label id="wakeTimeField">
+              <span>起床时间</span>
+              <button class="time-trigger" id="wakeTimeTrigger" type="button" aria-haspopup="dialog" aria-expanded="false" aria-label="选择起床时间">
+                <span id="wakeTimeText">选择</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 10l4 4 4-4"/></svg>
+              </button>
+              <input id="wakeTime" type="hidden" value="">
+            </label>
+            <label class="sleep-nap-field" id="napField"><span>午休时长（小时）</span><input id="napHours" type="number" min="0" max="12" step="0.5" value="0" inputmode="decimal"></label>
+          </div>
+          <div class="sleep-status" id="sleepStatus" aria-live="polite">填写后自动判断</div>
+        </div>
+      </form>
+    </section>
+
+    <div class="section-heading"><h2>本月统计</h2><span>学习 + 运动</span></div>
+
+    <section class="summary-strip" id="summaryStrip" aria-live="polite">
+      <article class="summary-card summary-total"><span>本月学习 + 运动</span><strong id="totalHours">—</strong><small>小时</small></article>
+      <article class="summary-card"><span>有效记录日</span><strong id="activeDays">—</strong><small>天</small></article>
+      <article class="summary-card"><span>日均（含运动）</span><strong id="averageHours">—</strong><small>小时 / 天</small></article>
+      <article class="summary-card"><span>单日最高</span><strong id="maxDay">—</strong><small>小时</small></article>
+      <div class="summary-bar rhythm-card">
+        <div class="rhythm-head">
+          <div class="rhythm-title">
+            <span>月度节律</span>
+            <small id="rhythmNote">10/25 起新统计</small>
+          </div>
+          <strong id="monthLabel">—</strong>
+        </div>
+        <div class="rhythm-grid">
+          <div class="rhythm-item llm">
+            <div class="rhythm-item-head"><i></i><span>核心科研</span></div>
+            <div class="rhythm-value"><strong id="rhythmLlm">0.0h</strong><small id="rhythmLlmPct">（0%）</small></div>
+          </div>
+          <div class="rhythm-item research">
+            <div class="rhythm-item-head"><i></i><span>项目开发</span></div>
+            <div class="rhythm-value"><strong id="rhythmResearch">0.0h</strong><small id="rhythmResearchPct">（0%）</small></div>
+          </div>
+          <div class="rhythm-item work">
+            <div class="rhythm-item-head"><i></i><span>其它事务</span></div>
+            <div class="rhythm-value"><strong id="rhythmWork">0.0h</strong><small id="rhythmWorkPct">（0%）</small></div>
+          </div>
+          <div class="rhythm-item sport-new">
+            <div class="rhythm-item-head"><i></i><span>运动兴趣</span></div>
+            <div class="rhythm-value"><strong id="rhythmSport">0.0h</strong><small id="rhythmSportPct">（0%）</small></div>
+          </div>
+        </div>
+        <div class="rhythm-foot">
+          <div class="sleep-grade none" id="sleepGradeWrap" title="11 月起按 iWatch 睡眠评分统计，>90 达标；此前月份按睡眠时间规则。按有记录的天数计算：优 ≥2/3 达标；良 1/3–2/3；中 0–1/3；差 0 天达标">
+            <span>睡眠</span>
+            <b id="sleepGrade">暂无</b>
+            <small id="sleepGradeDetail">暂无睡眠记录</small>
+          </div>
+          <small id="saveState">正在连接本地数据库</small>
+        </div>
+      </div>
+    </section>
+
+    <section class="legend-row">
+      <div><span class="legend-dot morning"></span><strong>早上</strong><small>08:00 — 12:00</small></div>
+      <div><span class="legend-dot afternoon"></span><strong>下午</strong><small>12:00 — 18:00</small></div>
+      <div><span class="legend-dot evening"></span><strong>晚上</strong><small>18:00 — 02:00</small></div>
+      <div><span class="legend-dot sport"></span><strong>运动</strong><small>全天任意时段</small></div>
+      <div class="legend-tip">点击柱子或选择日期，即可修改当天记录</div>
+    </section>
+  </main>
+
+  <div class="date-picker-backdrop" id="datePickerBackdrop" hidden></div>
+  <div class="date-picker" id="datePicker" role="dialog" aria-label="选择记录日期" hidden>
+    <div class="date-picker-head">
+      <button class="date-picker-nav" id="datePickerPrev" type="button" aria-label="上一个月">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14.5 5.5 8 12l6.5 6.5"/></svg>
+      </button>
+      <strong id="datePickerTitle">—</strong>
+      <button class="date-picker-nav" id="datePickerNext" type="button" aria-label="下一个月">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9.5 5.5 16 12l-6.5 6.5"/></svg>
+      </button>
+    </div>
+    <div class="date-picker-week" aria-hidden="true"><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span></div>
+    <div class="date-picker-grid" id="datePickerGrid"></div>
+    <div class="date-picker-foot">
+      <button class="date-picker-today" id="datePickerToday" type="button">今天</button>
+      <span id="datePickerSelectedLabel">—</span>
+    </div>
+  </div>
+
+  <div class="time-picker-backdrop" id="timePickerBackdrop" hidden></div>
+  <div class="time-picker" id="timePicker" role="dialog" aria-modal="true" aria-labelledby="timePickerTitle" hidden>
+    <div class="time-picker-head">
+      <strong id="timePickerTitle">睡眠时间</strong>
+      <button class="time-picker-close" id="timePickerClose" type="button" aria-label="关闭时间选择">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7 7 17"/></svg>
+      </button>
+    </div>
+    <div class="time-picker-preview" id="timePickerPreview">23:00</div>
+    <div class="time-picker-section">
+      <span>小时</span>
+      <div class="time-hour-grid" id="timeHourGrid"></div>
+    </div>
+    <div class="time-picker-section">
+      <span>分钟</span>
+      <div class="time-minute-grid" id="timeMinuteGrid"></div>
+    </div>
+    <div class="time-picker-foot">
+      <span>10 分钟粒度</span>
+      <button class="time-picker-done" id="timePickerDone" type="button">完成</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#32d74b" opacity=".16"/><path d="M6 10.2l2.6 2.6L14 7.2" fill="none" stroke="#32d74b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span></span>
+  </div>
+  <script src="/static/app.js?v=56"></script>
+</body>
+</html>

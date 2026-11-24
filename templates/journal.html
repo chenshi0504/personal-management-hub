@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>工作日志 · 个人管理</title>
+  <link rel="stylesheet" href="/static/style.css?v=66">
+  <link rel="stylesheet" href="/static/journal.css?v=2">
+  <link rel="stylesheet" href="/static/nav.css?v=4">
+  <script defer src="/static/nav.js?v=1"></script>
+  <script defer src="/static/journal.js"></script>
+</head>
+<body class="journal-page">
+  {% set active_page = 'journal' %}{% include "_nav.html" %}
+  <header class="topbar journal-toolbar">
+    <div class="journal-nav">
+      <nav aria-label="日志日期">
+        <button type="button" id="previous" class="icon-button" title="前一天" aria-label="前一天">‹</button>
+        <input type="date" id="day" aria-label="选择日志日期" min="2000-01-01" max="2100-12-31">
+        <button type="button" id="next" class="icon-button" title="后一天" aria-label="后一天">›</button>
+      </nav>
+    </div>
+  </header>
+  <main class="journal-main">
+    <div class="journal-heading"><img src="/static/book-open.svg" width="24" height="24" alt=""><h1>每日科研与项目开发日志</h1></div>
+    <div class="journal-dateline"><time id="dateLabel"></time><span id="cutoff"></span></div>
+    <section class="journal-overview" aria-labelledby="summaryTitle">
+      <div>
+        <h2 id="summaryTitle">总摘要</h2>
+        <p id="summary" role="status">正在读取日志…</p>
+      </div>
+      <dl id="metrics" aria-label="当天学习、运动与睡眠"></dl>
+    </section>
+    <section aria-labelledby="projectsTitle">
+      <div class="journal-section"><h2 id="projectsTitle">项目进展</h2><span id="projectCount"></span></div>
+      <div id="projects"></div>
+    </section>
+    <footer id="coverage"></footer>
+  </main>
+  <template id="projectCard">
+    <article class="journal-card">
+      <div class="card-meta"><span class="category"></span><span class="source"></span></div>
+      <h3></h3><p class="folder"></p><ul></ul>
+    </article>
+  </template>
+</body>
+</html>
