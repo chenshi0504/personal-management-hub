@@ -6,9 +6,10 @@
   <meta name="theme-color" content="#08090b">
   <meta name="color-scheme" content="dark">
   <title>项目计划 · 个人管理</title>
-  <link rel="stylesheet" href="/static/planner.css?v=4">
-  <link rel="stylesheet" href="/static/nav.css?v=5">
-  <script defer src="/static/nav.js?v=1"></script>
+  <link rel="stylesheet" href="/static/planner.css?v=19">
+  <link rel="stylesheet" href="/static/nav.css?v=6">
+  <script defer src="/static/nav.js?v=7"></script>
+  {% include "_theme.html" %}
 </head>
 <body class="planner-page">
   {% set active_page = 'planner' %}{% include "_nav.html" %}
@@ -19,12 +20,15 @@
         <small>PROJECTS &amp; TASKS</small>
       </div>
     </div>
+    <div class="due-strip" id="dueStrip" aria-label="未来 14 天到期任务"></div>
     <div class="plan-actions">
+      <button class="ghost-btn" id="urgentBtn" type="button">临期</button>
       <button class="ghost-btn" id="batchBtn" type="button">批量</button>
       <button class="ghost-btn" id="trashBtn" type="button">回收站</button>
       <button class="add-btn" id="newProjectBtn" type="button"><span>＋</span>新建项目</button>
     </div>
   </header>
+  <div class="due-panel" id="duePanel" hidden></div>
 
   <main class="plan-board" id="board">
     <div class="plan-loading">正在读取规划…</div>
@@ -72,29 +76,18 @@
           <input id="projectStart" type="date">
         </label>
         <label class="sheet-field">
-          <span>周期</span>
-          <select id="projectPeriod">
-            <option value="0">无</option>
-            <option value="7">1 周</option>
-            <option value="14">2 周</option>
-            <option value="30" selected>1 个月</option>
-            <option value="90">3 个月</option>
-            <option value="custom">自定义</option>
-          </select>
+          <span>结束日期 <em class="field-note">可以不填</em></span>
+          <input id="projectEnd" type="date">
         </label>
       </div>
-      <label class="sheet-field" id="projectDaysField" hidden>
-        <span>周期天数</span>
-        <input id="projectDays" type="number" min="1" max="3650" step="1" value="30">
-      </label>
       <div class="sheet-field">
-        <span>截止日期 <em class="field-note">单独强调，可以加多个</em></span>
-        <div class="deadline-list" id="deadlineList"></div>
-        <button class="deadline-add" id="deadlineAdd" type="button">＋ 添加截止日期</button>
+        <span>阶段性目标 <em class="field-note">日期 + 内容，独立于任务</em></span>
+        <div class="milestone-list" id="milestoneList"></div>
+        <button class="deadline-add" id="milestoneAdd" type="button">＋ 添加阶段性目标</button>
       </div>
     </div>
     <footer class="sheet-foot">
-      <span class="sheet-hint" id="projectHint">周期从开始日期算；截止日期可加多个，卡片上用感叹号标出。</span>
+      <span class="sheet-hint" id="projectHint">开始和结束日期都可以只写一个；阶段性目标按日期排在卡片上，用感叹号标出。</span>
       <div class="sheet-actions">
         <button class="sheet-cancel" id="projectCancel" type="button">取消</button>
         <button class="sheet-save" id="projectSave" type="button">保存</button>
@@ -112,33 +105,61 @@
         <span>任务名</span>
         <input id="taskName" type="text" maxlength="60" placeholder="任务内容" autocomplete="off">
       </label>
-      <div class="sheet-row">
-        <label class="sheet-field">
-          <span>时限</span>
-          <select id="taskLimit">
-            <option value="0" selected>无</option>
-            <option value="3">3 天</option>
-            <option value="7">1 周</option>
-            <option value="14">2 周</option>
-            <option value="30">1 个月</option>
-            <option value="custom">自定义</option>
-          </select>
-        </label>
-        <label class="sheet-field" id="taskDaysField" hidden>
-          <span>天数</span>
-          <input id="taskDays" type="number" min="1" max="3650" step="1" value="7">
-        </label>
-        <div class="sheet-field">
-          <span>截止</span>
-          <strong class="due-preview" id="taskDuePreview">无</strong>
+      <label class="sheet-field">
+        <span>结束日期 <em class="field-note">可以不填</em></span>
+        <input id="taskDue" type="date">
+      </label>
+      <div class="sheet-field" id="taskRepeatField" hidden>
+        <span>每周重复 <em class="field-note">会议这类固定安排，会排在备忘录最上面</em></span>
+        <div class="weekday-pick" id="taskRepeat" role="group" aria-label="每周重复">
+          <button type="button" data-day="-1" class="active">不重复</button>
+          <button type="button" data-day="0">周一</button>
+          <button type="button" data-day="1">周二</button>
+          <button type="button" data-day="2">周三</button>
+          <button type="button" data-day="3">周四</button>
+          <button type="button" data-day="4">周五</button>
+          <button type="button" data-day="5">周六</button>
+          <button type="button" data-day="6">周日</button>
         </div>
       </div>
     </div>
     <footer class="sheet-foot">
-      <span class="sheet-hint">时限从项目创建日算起；任务会排在项目下面。</span>
+      <span class="sheet-hint" id="taskHint">任务挂在项目下面；结束日期只影响这一条任务，留空就是没有期限。</span>
       <div class="sheet-actions">
         <button class="sheet-cancel" id="taskCancel" type="button">取消</button>
         <button class="sheet-save" id="taskSave" type="button">保存</button>
+      </div>
+    </footer>
+  </section>
+
+  <section class="sheet" id="itemSheet" role="dialog" aria-modal="true" aria-labelledby="itemSheetTitle" hidden>
+    <header class="sheet-head">
+      <h2 id="itemSheetTitle">新建事项</h2>
+      <button class="sheet-close" id="itemClose" type="button" aria-label="关闭">×</button>
+    </header>
+    <div class="sheet-body">
+      <label class="sheet-field">
+        <span>事项名</span>
+        <input id="itemName" type="text" maxlength="60" placeholder="这一条要做什么" autocomplete="off">
+      </label>
+      <label class="sheet-field">
+        <span>结束日期 <em class="field-note">可以不填</em></span>
+        <input id="itemDue" type="date">
+      </label>
+      <div class="sheet-field">
+        <span>重要</span>
+        <button class="heart-toggle" id="itemImportant" type="button" aria-pressed="false">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 13.4 3.1 8.6a2.9 2.9 0 0 1 4.1-4.1L8 5.3l.8-.8a2.9 2.9 0 1 1 4.1 4.1Z"/></svg>
+          <span>点亮表示重要</span>
+        </button>
+      </div>
+    </div>
+    <footer class="sheet-foot">
+      <span class="sheet-hint">开始时间就是创建时间；事项排在任务下面，只影响自己。</span>
+      <div class="sheet-actions">
+        <button class="sheet-delete" id="itemDelete" type="button" hidden>删除</button>
+        <button class="sheet-cancel" id="itemCancel" type="button">取消</button>
+        <button class="sheet-save" id="itemSave" type="button">保存</button>
       </div>
     </footer>
   </section>
@@ -147,6 +168,6 @@
     <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#32d74b" opacity=".16"/><path d="M6 10.2l2.6 2.6L14 7.2" fill="none" stroke="#32d74b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <span></span>
   </div>
-  <script src="/static/planner.js?v=4"></script>
+  <script src="/static/planner.js?v=24"></script>
 </body>
 </html>

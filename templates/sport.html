@@ -8,11 +8,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="description" content="体育兴趣：运动日历做计划与记录，兴趣按类记录时长">
   <title>体育兴趣 · 个人管理</title>
-  <link rel="stylesheet" href="/static/style.css?v=66">
-  <link rel="stylesheet" href="/static/nav.css?v=5">
+  <link rel="stylesheet" href="/static/style.css?v=78">
+  <link rel="stylesheet" href="/static/nav.css?v=6">
   <link rel="stylesheet" href="/static/training.css?v=14">
-  <link rel="stylesheet" href="/static/hobby.css?v=3">
-  <script defer src="/static/nav.js?v=1"></script>
+  <link rel="stylesheet" href="/static/hobby.css?v=7">
+  <script defer src="/static/nav.js?v=7"></script>
 
 <!-- FONT-SPEC v1 BEGIN（tools/apply_font_spec.py 写入，勿手改）-->
 <style>
@@ -38,6 +38,7 @@ h1, h2, h3, .panel-title, .brand-text strong, .cal-head{ font-family: var(--fs-h
 input[type="time"], input[type="number"], .num, .cal-date, .metric strong, .day-total b{ font-family: var(--fs-num); font-variant-numeric: tabular-nums; }
 </style>
 <!-- FONT-SPEC v1 END -->
+  {% include "_theme.html" %}
 </head>
 <body class="training-page sport-page">
   <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -268,10 +269,6 @@ input[type="time"], input[type="number"], .num, .cal-date, .metric strong, .day-
             <button class="btn-primary plan" id="hobbyAdd" type="button">＋ 添加一条</button>
           </div>
         </footer>
-      </div>
-    </section>
-  </main>
-
   <section class="hobby-sheet" id="hobbySheet" role="dialog" aria-modal="true" aria-labelledby="hobbySheetTitle" hidden>
     <header class="hs-head">
       <div>
@@ -292,7 +289,7 @@ input[type="time"], input[type="number"], .num, .cal-date, .metric strong, .day-
         <span class="hs-label">类别</span>
         <div class="hs-seg is-five" id="hobbyCats" role="group" aria-label="兴趣类别"></div>
       </div>
-      <div class="hs-field">
+      <div class="hs-field is-wide">
         <span class="hs-label">具体项目</span>
         <div class="hs-chips" id="hobbyItems" role="group" aria-label="具体项目"></div>
       </div>
@@ -315,7 +312,7 @@ input[type="time"], input[type="number"], .num, .cal-date, .metric strong, .day-
           </div>
         </div>
       </div>
-      <label class="hs-field">
+      <label class="hs-field is-wide">
         <span class="hs-label">备注</span>
         <textarea id="hobbyNote" rows="2" maxlength="200" placeholder="做了什么、和谁、下次想接着做什么…"></textarea>
       </label>
@@ -328,13 +325,16 @@ input[type="time"], input[type="number"], .num, .cal-date, .metric strong, .day-
       </div>
     </footer>
   </section>
-  <div class="hs-backdrop" id="hobbyBackdrop" hidden></div>
+      </div>
+    </section>
+  </main>
+
 
   <div class="toast" id="toast" role="status" aria-live="polite" hidden>
     <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#32d74b" opacity=".16"/><path d="M6 10.2l2.6 2.6L14 7.2" fill="none" stroke="#32d74b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <span></span>
   </div>
   <script src="/static/training.js?v=12"></script>
-  <script src="/static/hobby.js?v=2"></script>
+  <script src="/static/hobby.js?v=5"></script>
 </body>
 </html>

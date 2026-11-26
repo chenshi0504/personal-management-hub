@@ -9,9 +9,9 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="按月份记录核心科研、项目开发、其它事务、运动兴趣四类时长的本地仪表盘">
   <title>时间统计 · 个人管理</title>
-  <link rel="stylesheet" href="/static/style.css?v=66">
-  <link rel="stylesheet" href="/static/nav.css?v=5">
-  <script defer src="/static/nav.js?v=1"></script>
+  <link rel="stylesheet" href="/static/style.css?v=78">
+  <link rel="stylesheet" href="/static/nav.css?v=6">
+  <script defer src="/static/nav.js?v=7"></script>
 
 <!-- FONT-SPEC v1 BEGIN（tools/apply_font_spec.py 写入，勿手改）-->
 <style>
@@ -132,6 +132,7 @@ pre, code, kbd, samp, .mono{
 }
 </style>
 <!-- FONT-SPEC v1 END -->
+  {% include "_theme.html" %}
 </head>
 <body>
   <div class="ambient ambient-one" aria-hidden="true"></div>
@@ -204,7 +205,7 @@ pre, code, kbd, samp, .mono{
           <span><i class="sport-new"></i>运动兴趣</span>
         </div>
         <span class="legend-avg"><i class="avg"></i>当月日均</span>
-        <small>柱顶数字为当日学习 + 运动总时长；红色虚线为当月日均时长（小时）；周序号之间为当周学习总时长（不含运动）</small>
+        <small>柱顶数字为当日学习 + 运动总时长；红色虚线为当月日均时长（小时）；周序号之间为当周学习 + 运动总时长</small>
       </div>
       <form class="quick-editor" id="quickEditor" novalidate>
         <div class="quick-editor-title">
@@ -221,7 +222,7 @@ pre, code, kbd, samp, .mono{
             </button>
             <input id="quickDate" type="hidden" value="">
           </div>
-          <div class="quick-values" id="legacyValues">
+          <div class="quick-values" id="legacyValues" hidden>
             <label class="quick-field morning"><span>上午</span><input id="quickMorning" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
             <label class="quick-field afternoon"><span>下午</span><input id="quickAfternoon" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
             <label class="quick-field evening"><span>晚上</span><input id="quickEvening" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
@@ -232,10 +233,6 @@ pre, code, kbd, samp, .mono{
             <label class="quick-field research"><span>项目开发</span><input id="quickResearch" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
             <label class="quick-field work"><span>其它事务</span><input id="quickWork" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
             <label class="quick-field sport-new"><span>运动兴趣</span><input id="quickNewSport" type="number" min="0" max="24" step="0.5" value="0" inputmode="decimal"></label>
-            <label class="quick-field sleep-score" id="sleepScoreInline" hidden>
-              <span id="sleepScoreLabel">睡眠评分</span>
-              <input id="sleepScore" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" aria-label="iWatch 睡眠评分">
-            </label>
             <div class="sleep-toggle-wrap" id="sleepToggleWrap">
               <span>睡眠</span>
               <button class="sleep-toggle" id="sleepToggle" type="button" aria-expanded="false" aria-controls="sleepPanel">
@@ -244,7 +241,15 @@ pre, code, kbd, samp, .mono{
               </button>
             </div>
           </div>
-          <button class="quick-save" id="quickSaveButton" type="submit">保存当天</button>
+          <div class="quick-actions">
+            <button class="manual-toggle" id="manualToggle" type="button" aria-expanded="false" aria-controls="newValues">手动填写</button>
+            <label class="quick-sleep" id="sleepScoreInline" hidden>
+              <span id="sleepScoreLabel">睡眠评分</span>
+              <input id="sleepScore" type="number" min="0" max="100" step="1" value="0" inputmode="numeric" aria-label="iWatch 睡眠评分">
+            </label>
+            <button class="import-btn import-journal" id="importJournal" type="button" title="只导入当天日程里已勾选完成的事项，按颜色归到三类；运动也按日程算" disabled>导入日程</button>
+            <button class="quick-save" id="quickSaveButton" type="submit">保存当天</button>
+          </div>
         </div>
         <div class="sleep-panel" id="sleepPanel" hidden>
           <div class="sleep-panel-fields">
@@ -370,6 +375,6 @@ pre, code, kbd, samp, .mono{
     <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#32d74b" opacity=".16"/><path d="M6 10.2l2.6 2.6L14 7.2" fill="none" stroke="#32d74b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <span></span>
   </div>
-  <script src="/static/app.js?v=56"></script>
+  <script src="/static/app.js?v=68"></script>
 </body>
 </html>

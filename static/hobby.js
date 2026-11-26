@@ -306,14 +306,21 @@
       counted: entry ? entry.counted !== false : true,
       note: entry ? entry.note : "",
     };
+    // 编辑器现在长在详情框里，得先把当天详情打开
+    st.selected = st.form.date;
+    renderCalendar();
+    renderDetail();
     renderSheet();
     q("hobbySheet").hidden = false;
-    q("hobbyBackdrop").hidden = false;
+    const backdrop = q("hobbyBackdrop");
+    if (backdrop) backdrop.hidden = false;
+    scrollToDetail();
   }
 
   function closeSheet() {
     q("hobbySheet").hidden = true;
-    q("hobbyBackdrop").hidden = true;
+    const backdrop = q("hobbyBackdrop");
+    if (backdrop) backdrop.hidden = true;
     st.form = null;
   }
 
@@ -501,7 +508,8 @@
   q("hobbyCancel").addEventListener("click", closeSheet);
   q("hobbySheetClose").addEventListener("click", closeSheet);
   q("hobbyDelete").addEventListener("click", deleteEntry);
-  q("hobbyBackdrop").addEventListener("click", closeSheet);
+  const backdropEl = q("hobbyBackdrop");
+  if (backdropEl) backdropEl.addEventListener("click", closeSheet);
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && st.form) closeSheet();
   });

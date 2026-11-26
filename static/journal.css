@@ -31,7 +31,7 @@
 .journal-card ul { list-style: none; }
 .journal-card li { border-top: 1px solid var(--line); margin-top: 12px; padding-top: 10px; line-height: 1.65; }
 .journal-card li strong { display: block; font-size: 14px; }
-.journal-card li p { color: #c5c7cd; font-size: 14px; margin-top: 2px; }
+.journal-card li p { color: var(--mx-text-2); font-size: 14px; margin-top: 2px; }
 .journal-page footer { margin-top: 22px; }
 @media (max-width: 820px) {
   .journal-overview { grid-template-columns: 1fr; gap: 16px; }

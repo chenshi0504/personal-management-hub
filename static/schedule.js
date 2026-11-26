@@ -21,6 +21,7 @@ const state = {
   selectedDate: today,
   kind: "block",
   category: "research",
+  editingId: null,
   nowTimer: null,
 };
 
@@ -63,6 +64,34 @@ function clockText(minutes) {
 function addClock(value, delta) {
   const base = parseClock(value);
   return clockText((base === null ? 0 : base) + delta);
+}
+
+// 时间只精确到 5 分钟：选择器里也只有 00/05/10…55 这些档
+const TIME_OPTIONS = (() => {
+  const list = [];
+  for (let minute = 7 * 60; minute <= 23 * 60 + 55; minute += 5) list.push(clockText(minute));
+  for (let minute = 0; minute <= 60; minute += 5) list.push(clockText(minute));
+  return list;
+})();
+
+function fillTimeOptions() {
+  for (const id of ["itemStart", "itemEnd"]) {
+    const select = $(id);
+    if (!select) continue;
+    select.replaceChildren();
+    for (const value of TIME_OPTIONS) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = value;
+      select.append(option);
+    }
+  }
+}
+
+function snapClock(value) {
+  const minutes = parseClock(value);
+  if (minutes === null) return value;
+  return clockText(Math.round(minutes / 5) * 5);
 }
 
 function axisRange(item) {
@@ -119,7 +148,6 @@ async function loadWeek(start) {
     renderAll();
     const isPast = data.week_start < data.current_week_start;
     $("addBtn").disabled = isPast;
-    $("clearWeek").disabled = isPast;
     const empty = $("schedEmpty");
     empty.textContent = isPast
       ? "过去周的任务已自动清除，不能再查看或新建。"
@@ -219,10 +247,28 @@ function renderGrid() {
       .map((item) => ({ item, range: axisRange(item) }))
       .filter((entry) => entry.range && entry.range.start < AXIS_END && entry.range.end > AXIS_START);
 
-    layoutLanes(items);
-    for (const entry of items) {
-      col.append(eventBlock(entry));
+    // 提醒不占块：一条横线 + 右侧小铃铛，其余块照常分道
+    const blocks = items.filter((entry) => entry.item.kind !== "reminder");
+    const reminders = items.filter((entry) => entry.item.kind === "reminder");
+    layoutLanes(blocks);
+    for (const entry of blocks) col.append(eventBlock(entry));
+    const stacked = new Map();
+    for (const entry of reminders) {
+      const index = stacked.get(entry.item.start) || 0;
+      stacked.set(entry.item.start, index + 1);
+      col.append(reminderMark(entry, index));
     }
+    col.addEventListener("click", (event) => {
+      if (event.target.closest(".event, .reminder")) return;
+      if (!event.detail) return;
+      const rect = col.getBoundingClientRect();
+      const offsetY = event.clientY - rect.top;
+      if (offsetY < 0 || offsetY > rect.height) return;
+      const raw = AXIS_START + offsetY / PX_PER_MIN;
+      // 默认落到整点或半点，省得每次都手动调
+      const snapped = Math.min(Math.round(raw / 30) * 30, AXIS_END - 30);
+      openSheet(null, { date: day.date, start: clockText(snapped) });
+    });
     grid.append(col);
   }
 }
@@ -264,8 +310,10 @@ function eventBlock(entry) {
   const top = (range.start - AXIS_START) * PX_PER_MIN;
   const clippedEnd = Math.min(range.end, AXIS_END);
   const height = Math.max(24, (clippedEnd - range.start) * PX_PER_MIN - 2);
+  // 半小时、四十分钟这种矮块放不下「标题 + 时段」两行，只留标题，时段交给位置和悬停
+  const compact = height < 36;
   const block = document.createElement("article");
-  block.className = "event" + (item.kind === "reminder" ? " is-reminder" : "") + (item.done ? " is-done" : "") + (lanes > 1 ? " is-narrow" : "");
+  block.className = "event" + (item.kind === "reminder" ? " is-reminder" : "") + (item.done ? " is-done" : "") + (lanes > 1 ? " is-narrow" : "") + (compact ? " is-compact" : "");
   block.style.setProperty("--cat", item.color);
   block.style.top = `${top}px`;
   block.style.height = `${height}px`;
@@ -300,7 +348,43 @@ function eventBlock(entry) {
   });
 
   block.append(check, text, del);
+  block.tabIndex = 0;
+  block.setAttribute("role", "button");
+  block.setAttribute("aria-label", `编辑 ${item.title}`);
+  block.addEventListener("click", () => openSheet(item));
+  block.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      openSheet(item);
+    }
+  });
   return block;
+}
+
+function reminderMark(entry, index) {
+  const { item, range } = entry;
+  const wrap = node("div", "reminder" + (item.done ? " is-done" : ""));
+  wrap.style.setProperty("--cat", item.color);
+  wrap.style.top = `${(range.start - AXIS_START) * PX_PER_MIN + index * 10}px`;
+
+  const flag = node("button", "reminder-flag");
+  flag.type = "button";
+  flag.setAttribute("aria-label", `提醒 ${item.title}，点击编辑`);
+  flag.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.3a3.4 3.4 0 0 0-3.4 3.4v2.1L3.3 10h9.4L11.4 7.8V5.7A3.4 3.4 0 0 0 8 2.3Z"/><path d="M6.6 11.4a1.5 1.5 0 0 0 2.8 0"/></svg>';
+
+  const tip = node("span", "reminder-tip");
+  tip.append(node("strong", "", item.title));
+  const category = state.data.categories.find((cat) => cat.id === item.category);
+  tip.append(node("em", "", `${item.start} · ${category ? category.name : ""}`));
+  if (item.done) tip.append(node("em", "", "已完成"));
+  flag.append(tip);
+
+  flag.addEventListener("click", (event) => {
+    event.stopPropagation();
+    openSheet(item);
+  });
+  wrap.append(flag);
+  return wrap;
 }
 
 function renderNowLine() {
@@ -311,6 +395,8 @@ function renderNowLine() {
   if (now === null) return;
   const axis = now < 60 ? now + 1440 : now;
   if (axis < AXIS_START || axis > AXIS_END) return;
+  // 先清掉旧的，避免多次渲染叠出一条粗带
+  col.querySelectorAll(".now-line").forEach((item) => item.remove());
   const line = node("div", "now-line");
   line.style.top = `${(axis - AXIS_START) * PX_PER_MIN}px`;
   col.append(line);
@@ -334,8 +420,8 @@ async function toggleDone(item) {
   }
 }
 
-async function removeItem(item) {
-  if (!window.confirm(`删除「${item.title}」？`)) return;
+async function removeItem(item, ask = true) {
+  if (ask && !window.confirm(`删除「${item.title}」？`)) return;
   try {
     await api(`/api/schedule/items/${item.id}`, { method: "DELETE" });
     state.data.items = state.data.items.filter((entry) => entry.id !== item.id);
@@ -361,26 +447,47 @@ function defaultStart(date) {
   return clockText(Math.min(rounded, 23 * 60 + 30));
 }
 
-function openSheet() {
-  if (state.data.week_start < state.data.current_week_start) {
+fillTimeOptions();
+
+function openSheet(item, options) {
+  const editing = Boolean(item);
+  const preset = options || {};
+  if (!editing && state.data.week_start < state.data.current_week_start) {
     toast("过去周会自动清除，不能新建");
     return;
   }
-  const date = state.selectedDate || today;
-  const start = defaultStart(date);
-  $("itemTitle").value = "";
+  const date = editing ? item.date : (preset.date || state.selectedDate || today);
+  const start = snapClock(editing ? item.start : (preset.start || defaultStart(date)));
+  state.editingId = editing ? item.id : null;
+
+  $("sheetTitle").textContent = editing ? "修改事项" : "新建事项";
+  $("sheetSave").textContent = editing ? "保存修改" : "保存";
+  $("sheetDelete").hidden = !editing;
+  $("sheetHint").textContent = editing
+    ? "改完点保存；标题、日期、时间、类型都能改。"
+    : "默认持续 1 小时；可安排 07:00 到次日 01:00。";
+
+  $("itemTitle").value = editing ? item.title : "";
   $("itemDate").value = date;
   $("itemDate").min = state.data.current_week_start;
   $("itemStart").value = start;
-  $("itemEnd").value = addClock(start, 60);
-  setKind("block");
-  setCategory(state.category);
+  $("itemEnd").value = snapClock(editing && item.kind === "block" ? item.end : addClock(start, 60));
+  setKind(editing ? item.kind : "block");
+  setCategory(editing ? item.category : state.category);
+  $("doneField").hidden = !editing;
+  $("itemDone").checked = Boolean(editing && item.done);
   $("sheetBackdrop").hidden = false;
   $("sheet").hidden = false;
-  $("itemTitle").focus();
+  // 等一帧再聚焦：弹层刚显示时立刻 select() 会让中文输入法丢掉第一个字
+  requestAnimationFrame(() => {
+    const input = $("itemTitle");
+    input.focus();
+    if (editing) input.setSelectionRange(input.value.length, input.value.length);
+  });
 }
 
 function closeSheet() {
+  state.editingId = null;
   $("sheetBackdrop").hidden = true;
   $("sheet").hidden = true;
 }
@@ -429,13 +536,23 @@ async function saveItem() {
     end: state.kind === "reminder" ? "" : $("itemEnd").value,
     category: state.category,
   };
+  if (state.editingId) body.done = $("itemDone").checked;
+  const editingId = state.editingId;
   $("sheetSave").disabled = true;
   try {
-    await api("/api/schedule/items", { method: "POST", body: JSON.stringify(body) });
-    closeSheet();
-    state.selectedDate = body.date;
-    await loadWeek(weekStartOf(body.date));
-    toast("已添加");
+    if (editingId) {
+      await api(`/api/schedule/items/${editingId}`, { method: "PATCH", body: JSON.stringify(body) });
+      closeSheet();
+      state.selectedDate = body.date;
+      await loadWeek(weekStartOf(body.date));
+      toast("已保存修改");
+    } else {
+      await api("/api/schedule/items", { method: "POST", body: JSON.stringify(body) });
+      closeSheet();
+      state.selectedDate = body.date;
+      await loadWeek(weekStartOf(body.date));
+      toast("已添加");
+    }
   } catch (error) {
     toast(`没保存：${error.message}`);
   } finally {
@@ -448,11 +565,18 @@ async function saveItem() {
 $("prevWeek").addEventListener("click", () => loadWeek(shiftDate(state.weekStart, -7)));
 $("nextWeek").addEventListener("click", () => loadWeek(shiftDate(state.weekStart, 7)));
 $("todayBtn").addEventListener("click", () => loadWeek(null));
-$("addBtn").addEventListener("click", openSheet);
+$("addBtn").addEventListener("click", () => openSheet());
 $("sheetClose").addEventListener("click", closeSheet);
 $("sheetCancel").addEventListener("click", closeSheet);
 $("sheetBackdrop").addEventListener("click", closeSheet);
 $("sheetSave").addEventListener("click", saveItem);
+$("sheetDelete").addEventListener("click", () => {
+  const item = state.data.items.find((entry) => entry.id === state.editingId);
+  if (!item) return;
+  if (!window.confirm(`删除「${item.title}」？`)) return;
+  closeSheet();
+  removeItem(item, false);
+});
 
 document.querySelectorAll("#kindSeg button").forEach((button) => {
   button.addEventListener("click", () => {
@@ -464,18 +588,12 @@ document.querySelectorAll("#kindSeg button").forEach((button) => {
 });
 
 $("itemStart").addEventListener("change", () => {
+  $("itemStart").value = snapClock($("itemStart").value);
   if (state.kind === "block") $("itemEnd").value = addClock($("itemStart").value || "07:00", 60);
 });
 
-$("clearWeek").addEventListener("click", async () => {
-  if (!window.confirm("清除本周从周一到现在的任务？之后的保留。")) return;
-  try {
-    const result = await api("/api/schedule/clear", { method: "POST", body: "{}" });
-    await loadWeek(state.weekStart);
-    toast(`已清除 ${result.deleted} 项`);
-  } catch (error) {
-    toast(`清除失败：${error.message}`);
-  }
+$("itemEnd").addEventListener("change", () => {
+  $("itemEnd").value = snapClock($("itemEnd").value);
 });
 
 document.addEventListener("keydown", (event) => {

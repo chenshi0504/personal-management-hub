@@ -8,10 +8,11 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="description" content="周视图日程：按任务类型上色，新建分时段与提醒，每周自动清理上一周">
   <title>日程安排 · 个人管理</title>
-  <link rel="stylesheet" href="/static/style.css?v=66">
-  <link rel="stylesheet" href="/static/nav.css?v=5">
-  <link rel="stylesheet" href="/static/schedule.css?v=5">
-  <script defer src="/static/nav.js?v=1"></script>
+  <link rel="stylesheet" href="/static/style.css?v=78">
+  <link rel="stylesheet" href="/static/nav.css?v=6">
+  <link rel="stylesheet" href="/static/schedule.css?v=18">
+  <script defer src="/static/nav.js?v=7"></script>
+  {% include "_theme.html" %}
 </head>
 <body class="schedule-page">
   {% set active_page = 'schedule' %}{% include "_nav.html" %}
@@ -26,10 +27,6 @@
       <ul class="cat-list" id="catList"></ul>
 
       <div class="side-stats" id="sideStats">—</div>
-
-      <div class="side-label">操作</div>
-      <button class="side-clear" id="clearWeek" type="button">清除本周至今</button>
-      <p class="side-note">每周一自动清除上一周的任务。过去周只读。</p>
 
     </aside>
 
@@ -49,13 +46,10 @@
         </div>
       </header>
 
-      <div class="week-head">
-        <div class="head-gutter"></div>
-        <div class="head-days" id="headDays"></div>
-      </div>
-
       <div class="grid-scroll" id="gridScroll">
         <div class="grid-inner">
+          <div class="head-gutter"></div>
+          <div class="head-days" id="headDays"></div>
           <div class="time-gutter" id="timeGutter"></div>
           <div class="week-grid" id="weekGrid"></div>
         </div>
@@ -85,6 +79,11 @@
         </div>
       </div>
 
+      <label class="done-row" id="doneField" hidden>
+        <input type="checkbox" id="itemDone">
+        <span>已完成</span>
+      </label>
+
       <div class="sheet-row">
         <label class="sheet-field">
           <span>日期</span>
@@ -92,11 +91,11 @@
         </label>
         <label class="sheet-field">
           <span>开始</span>
-          <input id="itemStart" type="time" step="300">
+          <select id="itemStart" class="time-select" aria-label="开始时间"></select>
         </label>
         <label class="sheet-field" id="endField">
           <span>结束</span>
-          <input id="itemEnd" type="time" step="300">
+          <select id="itemEnd" class="time-select" aria-label="结束时间"></select>
         </label>
       </div>
 
@@ -108,6 +107,7 @@
     <footer class="sheet-foot">
       <span class="sheet-hint" id="sheetHint">默认持续 1 小时；可安排 07:00 到次日 01:00。</span>
       <div class="sheet-actions">
+        <button class="sheet-delete" id="sheetDelete" type="button" hidden>删除</button>
         <button class="sheet-cancel" id="sheetCancel" type="button">取消</button>
         <button class="sheet-save" id="sheetSave" type="button">保存</button>
       </div>
@@ -118,6 +118,6 @@
     <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="#32d74b" opacity=".16"/><path d="M6 10.2l2.6 2.6L14 7.2" fill="none" stroke="#32d74b" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
     <span></span>
   </div>
-  <script src="/static/schedule.js?v=3"></script>
+  <script src="/static/schedule.js?v=13"></script>
 </body>
 </html>

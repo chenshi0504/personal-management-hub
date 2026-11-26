@@ -194,6 +194,7 @@ def init_db():
             period_days INTEGER NOT NULL DEFAULT 30,
             deadline TEXT NOT NULL DEFAULT '',
             pinned INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0,
             archived INTEGER NOT NULL DEFAULT 0,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
@@ -208,39 +209,153 @@ def init_db():
             due_date TEXT NOT NULL DEFAULT '',
             pinned INTEGER NOT NULL DEFAULT 0,
             done INTEGER NOT NULL DEFAULT 0,
+            repeat_weekday INTEGER NOT NULL DEFAULT -1,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )"""
     )
     db.execute("CREATE INDEX IF NOT EXISTS idx_plan_tasks_project ON plan_tasks(project_id)")
-    # 项目截止日期：一个项目可以有多个，与周期分开
+    task_columns = {row[1] for row in db.execute("PRAGMA table_info(plan_tasks)").fetchall()}
+    if "repeat_weekday" not in task_columns:
+        # -1 = 不重复；0–6 = 每周一…每周日
+        db.execute("ALTER TABLE plan_tasks ADD COLUMN repeat_weekday INTEGER NOT NULL DEFAULT -1")
+    if "archived" not in task_columns:
+        # 备忘录的独立任务勾完自动归档，进回收站可恢复
+        db.execute("ALTER TABLE plan_tasks ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
+        db.execute("ALTER TABLE plan_tasks ADD COLUMN archived_at TEXT NOT NULL DEFAULT ''")
+    # 历史遗留：备忘录里早已勾完、但还没归档的独立任务，补进归档（幂等）
     db.execute(
-        """CREATE TABLE IF NOT EXISTS plan_deadlines (
+        """UPDATE plan_tasks
+        SET archived=1,
+            archived_at=CASE WHEN COALESCE(archived_at,'')=''
+                THEN COALESCE(NULLIF(updated_at,''), ?) ELSE archived_at END
+        WHERE project_id=0 AND done=1 AND archived=0""",
+        (datetime.now().isoformat(timespec="seconds"),),
+    )
+    # 事项：挂在任务下面，一条一条，默认没有结束日期
+    db.execute(
+        """CREATE TABLE IF NOT EXISTS plan_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            due_date TEXT NOT NULL DEFAULT '',
+            important INTEGER NOT NULL DEFAULT 0,
+            done INTEGER NOT NULL DEFAULT 0,
+            archived INTEGER NOT NULL DEFAULT 0,
+            archived_at TEXT NOT NULL DEFAULT '',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )"""
+    )
+    db.execute("CREATE INDEX IF NOT EXISTS idx_plan_items_task ON plan_items(task_id)")
+    item_columns = {row[1] for row in db.execute("PRAGMA table_info(plan_items)").fetchall()}
+    if "done" not in item_columns:
+        db.execute("ALTER TABLE plan_items ADD COLUMN done INTEGER NOT NULL DEFAULT 0")
+    # 阶段性目标：一个项目可以有多个，每条是「日期 + 内容」，与任务相互独立
+    db.execute(
+        """CREATE TABLE IF NOT EXISTS plan_milestones (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id INTEGER NOT NULL,
+            title TEXT NOT NULL DEFAULT '',
             due_date TEXT NOT NULL,
             created_at TEXT NOT NULL
         )"""
     )
-    db.execute("CREATE INDEX IF NOT EXISTS idx_plan_deadlines_project ON plan_deadlines(project_id)")
+    db.execute("CREATE INDEX IF NOT EXISTS idx_plan_milestones_project ON plan_milestones(project_id)")
     plan_columns = {row[1] for row in db.execute("PRAGMA table_info(plan_projects)").fetchall()}
     if "start_date" not in plan_columns:
         db.execute("ALTER TABLE plan_projects ADD COLUMN start_date TEXT NOT NULL DEFAULT ''")
         db.execute("UPDATE plan_projects SET start_date = substr(created_at, 1, 10)")
-    # 旧版单值 deadline 迁到多截止日期表
+    # 拖动换位用：同分类里的先后序号
+    if "sort_order" not in plan_columns:
+        db.execute("ALTER TABLE plan_projects ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0")
+        for category in ("research", "dev", "admin", "memo"):
+            rows = db.execute(
+                "SELECT id FROM plan_projects WHERE category=? ORDER BY created_at, id",
+                (category,),
+            ).fetchall()
+            for index, row in enumerate(rows):
+                db.execute("UPDATE plan_projects SET sort_order=? WHERE id=?", (index, row["id"]))
+    # 旧版只有「周期天数」，没有结束日期：按开始日期 + 周期把 end_date 补出来
+    if "end_date" not in plan_columns:
+        db.execute("ALTER TABLE plan_projects ADD COLUMN end_date TEXT NOT NULL DEFAULT ''")
+        for legacy in db.execute(
+            "SELECT id, start_date, period_days, created_at FROM plan_projects"
+        ).fetchall():
+            base = legacy["start_date"] or legacy["created_at"][:10]
+            try:
+                days = int(legacy["period_days"] or 0)
+            except (TypeError, ValueError):
+                days = 0
+            if days <= 0:
+                continue
+            try:
+                end = (date.fromisoformat(base) + timedelta(days=days)).isoformat()
+            except ValueError:
+                continue
+            db.execute("UPDATE plan_projects SET end_date=? WHERE id=?", (end, legacy["id"]))
+    # 旧版「截止日期」表只有日期没有内容：整体搬到阶段性目标，表改名留档
+    legacy_deadlines = db.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='plan_deadlines'"
+    ).fetchone()
+    if legacy_deadlines:
+        for legacy in db.execute("SELECT * FROM plan_deadlines").fetchall():
+            db.execute(
+                "INSERT INTO plan_milestones (project_id, title, due_date, created_at) VALUES (?, '', ?, ?)",
+                (legacy["project_id"], legacy["due_date"], legacy["created_at"]),
+            )
+        db.execute("ALTER TABLE plan_deadlines RENAME TO plan_deadlines_legacy")
+    # 更早的单值 deadline 列
     for legacy_row in db.execute(
         "SELECT id, deadline FROM plan_projects WHERE deadline != ''"
     ).fetchall():
         exists = db.execute(
-            "SELECT 1 FROM plan_deadlines WHERE project_id=? AND due_date=?",
+            "SELECT 1 FROM plan_milestones WHERE project_id=? AND due_date=?",
             (legacy_row["id"], legacy_row["deadline"]),
         ).fetchone()
         if not exists:
             db.execute(
-                "INSERT INTO plan_deadlines (project_id, due_date, created_at) VALUES (?, ?, ?)",
+                "INSERT INTO plan_milestones (project_id, title, due_date, created_at) VALUES (?, '', ?, ?)",
                 (legacy_row["id"], legacy_row["deadline"],
                  datetime.now().isoformat(timespec="seconds")),
             )
+    # 备忘录只放任务：历史上建在「备忘录」分类下的项目，转成独立任务（project_id=0），
+    # 子任务与阶段性目标转成它的事项
+    for legacy in db.execute(
+        "SELECT * FROM plan_projects WHERE category='memo' AND archived=0"
+    ).fetchall():
+        stamp = datetime.now().isoformat(timespec="seconds")
+        cursor = db.execute(
+            """INSERT INTO plan_tasks
+            (project_id, title, due_date, pinned, done, created_at, updated_at)
+            VALUES (0, ?, ?, ?, 0, ?, ?)""",
+            (legacy["title"], legacy["end_date"] or "", legacy["pinned"],
+             legacy["created_at"], stamp),
+        )
+        new_task_id = cursor.lastrowid
+        for child in db.execute(
+            "SELECT * FROM plan_tasks WHERE project_id=?", (legacy["id"],)
+        ).fetchall():
+            db.execute(
+                """INSERT INTO plan_items
+                (task_id, title, due_date, important, archived, archived_at, created_at, updated_at)
+                VALUES (?, ?, ?, ?, 0, '', ?, ?)""",
+                (new_task_id, child["title"], child["due_date"], child["pinned"],
+                 child["created_at"], stamp),
+            )
+        for milestone in db.execute(
+            "SELECT * FROM plan_milestones WHERE project_id=?", (legacy["id"],)
+        ).fetchall():
+            db.execute(
+                """INSERT INTO plan_items
+                (task_id, title, due_date, important, archived, archived_at, created_at, updated_at)
+                VALUES (?, ?, ?, 0, 0, '', ?, ?)""",
+                (new_task_id, milestone["title"] or "阶段性目标", milestone["due_date"],
+                 milestone["created_at"], stamp),
+            )
+        db.execute("DELETE FROM plan_tasks WHERE project_id=?", (legacy["id"],))
+        db.execute("DELETE FROM plan_milestones WHERE project_id=?", (legacy["id"],))
+        db.execute("DELETE FROM plan_projects WHERE id=?", (legacy["id"],))
     # 体育兴趣：计划与记录分开，只记时长，不记时段
     db.execute(
         """CREATE TABLE IF NOT EXISTS hobby_plans (
@@ -1220,10 +1335,7 @@ def api_schedule_week():
     start = week_start_for(anchor)
     current = current_week_start()
     db = get_db()
-    pruned = db.execute(
-        "DELETE FROM schedule_items WHERE week_start < ?", (current.isoformat(),)
-    ).rowcount
-    db.commit()
+    # 不再自动清理历史周：日程只增不删，过去周保持只读
     rows = db.execute(
         "SELECT * FROM schedule_items WHERE week_start=? ORDER BY item_date, start_time, id",
         (start.isoformat(),),
@@ -1252,7 +1364,6 @@ def api_schedule_week():
         "items": items,
         "counts": counts,
         "done": len([item for item in items if item["done"]]),
-        "pruned": pruned,
     })
 
 
@@ -1300,12 +1411,52 @@ def api_schedule_update(item_id):
     row = db.execute("SELECT * FROM schedule_items WHERE id=?", (item_id,)).fetchone()
     if not row:
         return jsonify({"error": "事项不存在"}), 404
-    if "done" not in body:
-        return jsonify({"error": "只支持修改完成状态"}), 400
-    done = 1 if body.get("done") else 0
+
+    # 只切完成状态：圆框点击
+    if set(body) <= {"done"}:
+        if "done" not in body:
+            return jsonify({"error": "没有要修改的内容"}), 400
+        db.execute(
+            "UPDATE schedule_items SET done=?, updated_at=? WHERE id=?",
+            (1 if body.get("done") else 0, datetime.now().isoformat(timespec="seconds"), item_id),
+        )
+        db.commit()
+        row = db.execute("SELECT * FROM schedule_items WHERE id=?", (item_id,)).fetchone()
+        return jsonify(schedule_item_payload(row))
+
+    # 点击事项后整体编辑
+    title = str(body.get("title", row["title"]) or "").strip()[:40]
+    if not title:
+        return jsonify({"error": "事项名不能为空"}), 400
+    category = str(body.get("category") or row["category"]).strip()
+    if category not in SCHEDULE_CATEGORY_MAP:
+        return jsonify({"error": "请选择任务类型"}), 400
+    kind = str(body.get("kind") or row["kind"]).strip()
+    if kind not in ("block", "reminder"):
+        return jsonify({"error": "事项类型无效"}), 400
+    try:
+        item_date = date.fromisoformat(str(body.get("date") or row["item_date"]))
+    except ValueError:
+        return jsonify({"error": "日期格式无效"}), 400
+    start_value = body.get("start") or row["start_time"]
+    base = clock_minutes(start_value) or 0
+    fallback_end = f"{(base + 60) // 60 % 24:02d}:{(base + 60) % 60:02d}"
+    end_value = body.get("end") or row["end_time"] or fallback_end
+    try:
+        start_time, end_time = parse_schedule_times(start_value, end_value, kind)
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    week_start = week_start_for(item_date)
+    if week_start < current_week_start():
+        return jsonify({"error": "过去周会自动清除，不能改到过去"}), 403
+    done = 1 if body.get("done", row["done"]) else 0
     db.execute(
-        "UPDATE schedule_items SET done=?, updated_at=? WHERE id=?",
-        (done, datetime.now().isoformat(timespec="seconds"), item_id),
+        """UPDATE schedule_items
+        SET item_date=?, start_time=?, end_time=?, title=?, category=?, kind=?, done=?,
+            week_start=?, updated_at=?
+        WHERE id=?""",
+        (item_date.isoformat(), start_time, end_time, title, category, kind, done,
+         week_start.isoformat(), datetime.now().isoformat(timespec="seconds"), item_id),
     )
     db.commit()
     row = db.execute("SELECT * FROM schedule_items WHERE id=?", (item_id,)).fetchone()
@@ -1318,19 +1469,6 @@ def api_schedule_delete(item_id):
     db.execute("DELETE FROM schedule_items WHERE id=?", (item_id,))
     db.commit()
     return jsonify({"ok": True, "id": item_id})
-
-
-@app.route("/api/schedule/clear", methods=["POST"])
-def api_schedule_clear():
-    cutoff = datetime.now().strftime("%Y-%m-%dT%H:%M")
-    db = get_db()
-    deleted = db.execute(
-        """DELETE FROM schedule_items
-        WHERE week_start=? AND (item_date || 'T' || start_time) <= ?""",
-        (current_week_start().isoformat(), cutoff),
-    ).rowcount
-    db.commit()
-    return jsonify({"deleted": deleted})
 
 
 def plan_due_date(start_value, days):
@@ -1351,46 +1489,136 @@ def parse_plan_date(value, label):
         raise ValueError(f"{label}格式无效")
 
 
-def clean_plan_deadlines(raw):
-    """截止日期列表：去重、升序、最多 12 个。"""
+def parse_plan_date_optional(value, label):
+    """结束日期可以直接不填。"""
+    text = str(value or "").strip()
+    if not text:
+        return ""
+    return parse_plan_date(text, label)
+
+
+def parse_repeat_weekday(value):
+    """每周重复：-1 不重复，0–6 是周一到周日。"""
+    if value is None or value == "":
+        return -1
+    try:
+        day = int(value)
+    except (TypeError, ValueError):
+        raise ValueError("每周重复的星期无效")
+    if day < -1 or day > 6:
+        raise ValueError("每周重复的星期无效")
+    return day
+
+
+def clean_plan_milestones(raw):
+    """阶段性目标：每条是「日期 + 内容」。日期必填、内容可空，最多 12 条。"""
     if raw is None:
         return []
     if not isinstance(raw, list):
-        raise ValueError("截止日期格式无效")
+        raise ValueError("阶段性目标格式无效")
     values = []
     for item in raw[:24]:
-        text = str(item or "").strip()
-        if not text:
+        if not isinstance(item, dict):
+            continue
+        due = str(item.get("date") or item.get("due_date") or "").strip()[:10]
+        if not due:
             continue
         try:
-            values.append(date.fromisoformat(text[:10]).isoformat())
+            due = date.fromisoformat(due).isoformat()
         except ValueError:
-            raise ValueError("截止日期格式无效")
-    return sorted(dict.fromkeys(values))[:12]
+            raise ValueError("阶段性目标日期无效")
+        values.append({
+            "title": str(item.get("title") or "").strip()[:40],
+            "date": due,
+        })
+    values.sort(key=lambda entry: entry["date"])
+    return values[:12]
 
 
-def plan_task_payload(row):
+PLAN_PROJECT_ORDER = "pinned DESC, sort_order ASC, created_at, id"
+# 任务与事项同一套先后规则：有截止的按截止日期，没截止的按创建时间排在后面
+PLAN_DUE_ORDER = "(due_date = '') ASC, due_date ASC, created_at ASC, id"
+# 任务多两条：置顶优先，其次是每周重复的（会议这类要一直排在最上面）
+PLAN_TASK_ORDER = "pinned DESC, (repeat_weekday >= 0) DESC, (due_date = '') ASC, due_date ASC, created_at ASC, id"
+WEEKDAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
+
+
+def plan_item_payload(row):
     return {
+        "id": row["id"],
+        "task_id": row["task_id"],
+        "title": row["title"],
+        "due_date": row["due_date"],
+        "important": bool(row["important"]),
+        "done": bool(row["done"]),
+        "archived": bool(row["archived"]),
+        "archived_at": row["archived_at"],
+        "created_at": row["created_at"],
+        "created_date": row["created_at"][:10],
+    }
+
+
+def plan_task_ratio(task):
+    """任务在项目进度里占的比重：勾了任务就是整份；否则按它的事项完成比例。"""
+    if task["done"]:
+        return 1.0
+    items = task.get("items") or []
+    if not items:
+        return 0.0
+    return len([item for item in items if item["done"]]) / len(items)
+
+
+def plan_task_payload(row, items=None):
+    items = items or []
+    repeat = row["repeat_weekday"] if "repeat_weekday" in row.keys() else -1
+    task = {
         "id": row["id"],
         "project_id": row["project_id"],
         "title": row["title"],
         "due_date": row["due_date"],
         "pinned": bool(row["pinned"]),
         "done": bool(row["done"]),
+        "repeat_weekday": repeat,
+        "repeat_label": WEEKDAY_NAMES[repeat] if 0 <= repeat <= 6 else "",
         "created_at": row["created_at"],
+        "archived": bool(row["archived"]) if "archived" in row.keys() else False,
+        "archived_at": (row["archived_at"] if "archived_at" in row.keys() else "") or "",
+        "items": items,
+        "item_count": len(items),
+        "item_done": len([item for item in items if item["done"]]),
     }
+    task["progress"] = round(100 * plan_task_ratio(task))
+    return task
 
 
-def plan_project_payload(row, tasks, deadlines=None):
+def load_project_tasks(db, project_id):
+    """项目下的任务按截止先后排，没有截止的按创建时间排在后面；任务下挂未归档的事项。"""
+    items = db.execute(
+        f"""SELECT * FROM plan_items WHERE archived=0 AND task_id IN
+            (SELECT id FROM plan_tasks WHERE project_id=?) ORDER BY {PLAN_DUE_ORDER}""",
+        (project_id,),
+    ).fetchall()
+    item_map = {}
+    for row in items:
+        item_map.setdefault(row["task_id"], []).append(plan_item_payload(row))
+    tasks = db.execute(
+        f"SELECT * FROM plan_tasks WHERE project_id=? ORDER BY {PLAN_TASK_ORDER}",
+        (project_id,),
+    ).fetchall()
+    return [plan_task_payload(row, item_map.get(row["id"], [])) for row in tasks]
+
+
+def plan_project_payload(row, tasks, milestones=None):
     done = len([task for task in tasks if task["done"]])
-    deadlines = deadlines or []
+    progress = round(100 * sum(plan_task_ratio(task) for task in tasks) / len(tasks)) if tasks else 0
     return {
         "id": row["id"],
         "category": row["category"],
         "title": row["title"],
-        "period_days": row["period_days"],
-        "start_date": row["start_date"] or row["created_at"][:10],
-        "deadlines": deadlines,
+        "start_date": row["start_date"],
+        "end_date": row["end_date"] if "end_date" in row.keys() else "",
+        "sort_order": row["sort_order"] if "sort_order" in row.keys() else 0,
+        "milestones": milestones or [],
         "pinned": bool(row["pinned"]),
         "archived": bool(row["archived"]),
         "created_at": row["created_at"],
@@ -1398,47 +1626,94 @@ def plan_project_payload(row, tasks, deadlines=None):
         "archived_at": row["archived_at"],
         "task_count": len(tasks),
         "done_count": done,
+        "progress": progress,
         "tasks": tasks,
     }
+
+
+def plan_milestone_payload(row):
+    return {"id": row["id"], "title": row["title"], "date": row["due_date"]}
+
+
+def load_plan_milestones(db, project_id):
+    return [
+        plan_milestone_payload(row)
+        for row in db.execute(
+            "SELECT * FROM plan_milestones WHERE project_id=? ORDER BY due_date, id",
+            (project_id,),
+        ).fetchall()
+    ]
+
+
+def replace_plan_milestones(db, project_id, milestones, now):
+    db.execute("DELETE FROM plan_milestones WHERE project_id=?", (project_id,))
+    for entry in milestones:
+        db.execute(
+            """INSERT INTO plan_milestones (project_id, title, due_date, created_at)
+            VALUES (?, ?, ?, ?)""",
+            (project_id, entry["title"], entry["date"], now),
+        )
 
 
 @app.route("/api/plans")
 def api_plans():
     db = get_db()
     projects = db.execute(
-        "SELECT * FROM plan_projects WHERE archived=0 ORDER BY pinned DESC, created_at, id"
+        f"SELECT * FROM plan_projects WHERE archived=0 ORDER BY {PLAN_PROJECT_ORDER}"
     ).fetchall()
-    tasks = db.execute(
-        "SELECT * FROM plan_tasks ORDER BY pinned DESC, done, created_at, id"
+    tasks = db.execute(f"SELECT * FROM plan_tasks WHERE archived=0 ORDER BY {PLAN_TASK_ORDER}").fetchall()
+    items = db.execute(
+        f"SELECT * FROM plan_items WHERE archived=0 ORDER BY {PLAN_DUE_ORDER}"
     ).fetchall()
+    item_map = {}
+    for row in items:
+        item_map.setdefault(row["task_id"], []).append(plan_item_payload(row))
     grouped = {}
     for row in tasks:
-        grouped.setdefault(row["project_id"], []).append(plan_task_payload(row))
-    deadline_map = {}
-    for row in db.execute("SELECT project_id, due_date FROM plan_deadlines ORDER BY due_date, id").fetchall():
-        deadline_map.setdefault(row["project_id"], []).append(row["due_date"])
+        grouped.setdefault(row["project_id"], []).append(
+            plan_task_payload(row, item_map.get(row["id"], []))
+        )
+    milestone_map = {}
+    for row in db.execute("SELECT * FROM plan_milestones ORDER BY due_date, id").fetchall():
+        milestone_map.setdefault(row["project_id"], []).append(plan_milestone_payload(row))
     payload = [
-        plan_project_payload(row, grouped.get(row["id"], []), deadline_map.get(row["id"], []))
+        plan_project_payload(row, grouped.get(row["id"], []), milestone_map.get(row["id"], []))
         for row in projects
     ]
     archived_rows = db.execute(
         "SELECT * FROM plan_projects WHERE archived=1 ORDER BY archived_at DESC, id DESC"
     ).fetchall()
     archived = [
-        plan_project_payload(row, grouped.get(row["id"], []), deadline_map.get(row["id"], []))
+        plan_project_payload(row, grouped.get(row["id"], []), milestone_map.get(row["id"], []))
         for row in archived_rows
     ]
-    return jsonify({"categories": PLAN_CATEGORIES, "projects": payload, "archived": archived})
-
-
-def parse_plan_days(value, label):
-    try:
-        days = int(value)
-    except (TypeError, ValueError):
-        raise ValueError(f"{label}天数无效")
-    if days < 0 or days > 3650:
-        raise ValueError(f"{label}天数应在 0 到 3650 之间")
-    return days
+    archived_items = []
+    for row in db.execute(
+        """SELECT i.*, t.title AS task_title, p.title AS project_title
+        FROM plan_items i
+        LEFT JOIN plan_tasks t ON t.id = i.task_id
+        LEFT JOIN plan_projects p ON p.id = t.project_id
+        WHERE i.archived=1
+        ORDER BY i.archived_at DESC, i.id DESC"""
+    ).fetchall():
+        entry = plan_item_payload(row)
+        entry["task_title"] = row["task_title"] or "（任务已删除）"
+        entry["project_title"] = row["project_title"] or "（项目已删除）"
+        archived_items.append(entry)
+    archived_tasks = [
+        plan_task_payload(row, [])
+        for row in db.execute(
+            "SELECT * FROM plan_tasks WHERE archived=1 AND project_id=0 ORDER BY archived_at DESC, id DESC"
+        ).fetchall()
+    ]
+    return jsonify({
+        "categories": PLAN_CATEGORIES,
+        "projects": payload,
+        "archived": archived,
+        "archived_items": archived_items,
+        "archived_tasks": archived_tasks,
+        "standalone_tasks": grouped.get(0, []),
+    })
 
 
 @app.route("/api/plans/projects", methods=["POST"])
@@ -1450,32 +1725,33 @@ def api_plan_project_create():
     category = str(body.get("category") or "").strip()
     if category not in PLAN_CATEGORY_MAP:
         return jsonify({"error": "分类无效"}), 400
-    try:
-        period_days = parse_plan_days(body.get("period_days", 30), "周期")
-    except ValueError as error:
-        return jsonify({"error": str(error)}), 400
+    if category == "memo":
+        return jsonify({"error": "备忘录只放任务，不能建项目"}), 400
     now = datetime.now().isoformat(timespec="seconds")
     try:
-        start_date = parse_plan_date(body.get("start_date") or now[:10], "开始日期")
-        deadlines = clean_plan_deadlines(body.get("deadlines"))
+        start_date = parse_plan_date_optional(body.get("start_date"), "开始日期")
+        end_date = parse_plan_date_optional(body.get("end_date"), "结束日期")
+        milestones = clean_plan_milestones(body.get("milestones"))
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
+    if start_date and end_date and end_date < start_date:
+        return jsonify({"error": "结束日期不能早于开始日期"}), 400
     db = get_db()
+    next_order = db.execute(
+        "SELECT COALESCE(MAX(sort_order), -1) + 1 FROM plan_projects WHERE category=?",
+        (category,),
+    ).fetchone()[0]
     cursor = db.execute(
         """INSERT INTO plan_projects
-        (category, title, period_days, deadline, start_date, pinned, archived, created_at, updated_at)
-        VALUES (?, ?, ?, '', ?, 0, 0, ?, ?)""",
-        (category, title, period_days, start_date, now, now),
+        (category, title, deadline, start_date, end_date, sort_order, pinned, archived, created_at, updated_at)
+        VALUES (?, ?, '', ?, ?, ?, 0, 0, ?, ?)""",
+        (category, title, start_date, end_date, next_order, now, now),
     )
     project_id = cursor.lastrowid
-    for due in deadlines:
-        db.execute(
-            "INSERT INTO plan_deadlines (project_id, due_date, created_at) VALUES (?, ?, ?)",
-            (project_id, due, now),
-        )
+    replace_plan_milestones(db, project_id, milestones, now)
     db.commit()
     row = db.execute("SELECT * FROM plan_projects WHERE id=?", (project_id,)).fetchone()
-    return jsonify(plan_project_payload(row, [], deadlines))
+    return jsonify(plan_project_payload(row, [], load_plan_milestones(db, project_id)))
 
 
 @app.route("/api/plans/projects/<int:project_id>", methods=["PATCH"])
@@ -1495,55 +1771,50 @@ def api_plan_project_update(project_id):
         category = str(body.get("category") or "").strip()
         if category not in PLAN_CATEGORY_MAP:
             return jsonify({"error": "分类无效"}), 400
+        if category == "memo" and row["category"] != "memo":
+            return jsonify({"error": "备忘录只放任务，不能放项目"}), 400
         fields["category"] = category
-    if "period_days" in body:
-        try:
-            fields["period_days"] = parse_plan_days(body.get("period_days"), "周期")
-        except ValueError as error:
-            return jsonify({"error": str(error)}), 400
     if "start_date" in body:
         try:
-            fields["start_date"] = parse_plan_date(body.get("start_date"), "开始日期")
+            fields["start_date"] = parse_plan_date_optional(body.get("start_date"), "开始日期")
         except ValueError as error:
             return jsonify({"error": str(error)}), 400
-    deadlines = None
-    if "deadlines" in body:
+    if "end_date" in body:
         try:
-            deadlines = clean_plan_deadlines(body.get("deadlines"))
+            fields["end_date"] = parse_plan_date_optional(body.get("end_date"), "结束日期")
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+    milestones = None
+    if "milestones" in body:
+        try:
+            milestones = clean_plan_milestones(body.get("milestones"))
         except ValueError as error:
             return jsonify({"error": str(error)}), 400
     if "pinned" in body:
-        fields["pinned"] = 1 if body.get("pinned") else 0
-    if not fields and deadlines is None:
+        want_pin = bool(body.get("pinned"))
+        if want_pin:
+            pinned_now = db.execute(
+                "SELECT COUNT(*) FROM plan_projects WHERE pinned=1 AND archived=0 AND id<>?",
+                (project_id,),
+            ).fetchone()[0]
+            if pinned_now >= 2:
+                return jsonify({"error": "最多置顶 2 个重点项目"}), 400
+        fields["pinned"] = 1 if want_pin else 0
+    if not fields and milestones is None:
         return jsonify({"error": "没有可修改的字段"}), 400
+    start_value = fields.get("start_date", row["start_date"])
+    end_value = fields.get("end_date", row["end_date"])
+    if start_value and end_value and end_value < start_value:
+        return jsonify({"error": "结束日期不能早于开始日期"}), 400
     fields["updated_at"] = datetime.now().isoformat(timespec="seconds")
     assignments = ", ".join(f"{key}=?" for key in fields)
     db.execute(f"UPDATE plan_projects SET {assignments} WHERE id=?", tuple(fields.values()) + (project_id,))
-    if deadlines is not None:
-        now = fields["updated_at"]
-        db.execute("DELETE FROM plan_deadlines WHERE project_id=?", (project_id,))
-        for due in deadlines:
-            db.execute(
-                "INSERT INTO plan_deadlines (project_id, due_date, created_at) VALUES (?, ?, ?)",
-                (project_id, due, now),
-            )
+    if milestones is not None:
+        replace_plan_milestones(db, project_id, milestones, fields["updated_at"])
     db.commit()
     row = db.execute("SELECT * FROM plan_projects WHERE id=?", (project_id,)).fetchone()
-    tasks = [
-        plan_task_payload(task)
-        for task in db.execute(
-            "SELECT * FROM plan_tasks WHERE project_id=? ORDER BY pinned DESC, done, created_at, id",
-            (project_id,),
-        ).fetchall()
-    ]
-    saved = [
-        item["due_date"]
-        for item in db.execute(
-            "SELECT due_date FROM plan_deadlines WHERE project_id=? ORDER BY due_date, id",
-            (project_id,),
-        ).fetchall()
-    ]
-    return jsonify(plan_project_payload(row, tasks, saved))
+    return jsonify(plan_project_payload(row, load_project_tasks(db, project_id),
+                                        load_plan_milestones(db, project_id)))
 
 
 @app.route("/api/plans/projects/<int:project_id>/archive", methods=["POST"])
@@ -1578,8 +1849,12 @@ def api_plan_project_restore(project_id):
 @app.route("/api/plans/projects/<int:project_id>", methods=["DELETE"])
 def api_plan_project_delete(project_id):
     db = get_db()
+    db.execute(
+        "DELETE FROM plan_items WHERE task_id IN (SELECT id FROM plan_tasks WHERE project_id=?)",
+        (project_id,),
+    )
     db.execute("DELETE FROM plan_tasks WHERE project_id=?", (project_id,))
-    db.execute("DELETE FROM plan_deadlines WHERE project_id=?", (project_id,))
+    db.execute("DELETE FROM plan_milestones WHERE project_id=?", (project_id,))
     db.execute("DELETE FROM plan_projects WHERE id=?", (project_id,))
     db.commit()
     return jsonify({"ok": True, "id": project_id})
@@ -1589,27 +1864,29 @@ def api_plan_project_delete(project_id):
 def api_plan_task_create():
     body = request.get_json(silent=True) or {}
     try:
-        project_id = int(body.get("project_id"))
+        project_id = int(body.get("project_id") or 0)
     except (TypeError, ValueError):
         return jsonify({"error": "项目无效"}), 400
     db = get_db()
-    project = db.execute("SELECT * FROM plan_projects WHERE id=?", (project_id,)).fetchone()
-    if not project or project["archived"]:
-        return jsonify({"error": "项目不存在或已归档"}), 404
+    # project_id=0：备忘录里的独立任务，不隶属任何项目
+    if project_id:
+        project = db.execute("SELECT * FROM plan_projects WHERE id=?", (project_id,)).fetchone()
+        if not project or project["archived"]:
+            return jsonify({"error": "项目不存在或已归档"}), 404
     title = str(body.get("title") or "").strip()[:60]
     if not title:
         return jsonify({"error": "任务名不能为空"}), 400
     try:
-        limit_days = parse_plan_days(body.get("limit_days", 0), "时限")
+        due = parse_plan_date_optional(body.get("due_date"), "结束日期")
+        repeat = parse_repeat_weekday(body.get("repeat_weekday"))
     except ValueError as error:
         return jsonify({"error": str(error)}), 400
-    due = plan_due_date(project["start_date"] or project["created_at"], limit_days)
     now = datetime.now().isoformat(timespec="seconds")
     cursor = db.execute(
         """INSERT INTO plan_tasks
-        (project_id, title, due_date, pinned, done, created_at, updated_at)
-        VALUES (?, ?, ?, 0, 0, ?, ?)""",
-        (project_id, title, due, now, now),
+        (project_id, title, due_date, pinned, done, repeat_weekday, created_at, updated_at)
+        VALUES (?, ?, ?, 0, 0, ?, ?, ?)""",
+        (project_id, title, due, repeat, now, now),
     )
     db.commit()
     row = db.execute("SELECT * FROM plan_tasks WHERE id=?", (cursor.lastrowid,)).fetchone()
@@ -1629,16 +1906,25 @@ def api_plan_task_update(task_id):
         if not title:
             return jsonify({"error": "任务名不能为空"}), 400
         fields["title"] = title
-    if "limit_days" in body:
+    if "due_date" in body:
         try:
-            limit_days = parse_plan_days(body.get("limit_days"), "时限")
+            fields["due_date"] = parse_plan_date_optional(body.get("due_date"), "结束日期")
         except ValueError as error:
             return jsonify({"error": str(error)}), 400
-        project = db.execute("SELECT * FROM plan_projects WHERE id=?", (row["project_id"],)).fetchone()
-        base = (project["start_date"] or project["created_at"]) if project else ""
-        fields["due_date"] = plan_due_date(base, limit_days) if project else ""
+    if "repeat_weekday" in body:
+        try:
+            fields["repeat_weekday"] = parse_repeat_weekday(body.get("repeat_weekday"))
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
     if "done" in body:
-        fields["done"] = 1 if body.get("done") else 0
+        done_value = 1 if body.get("done") else 0
+        fields["done"] = done_value
+        # 备忘录里的独立任务（project_id=0）：勾完就归档，进回收站
+        if row["project_id"] == 0:
+            fields["archived"] = done_value
+            fields["archived_at"] = (
+                datetime.now().isoformat(timespec="seconds") if done_value else ""
+            )
     if "pinned" in body:
         fields["pinned"] = 1 if body.get("pinned") else 0
     if not fields:
@@ -1648,12 +1934,34 @@ def api_plan_task_update(task_id):
     db.execute(f"UPDATE plan_tasks SET {assignments} WHERE id=?", tuple(fields.values()) + (task_id,))
     db.commit()
     row = db.execute("SELECT * FROM plan_tasks WHERE id=?", (task_id,)).fetchone()
-    return jsonify(plan_task_payload(row))
+    items = [
+        plan_item_payload(item)
+        for item in db.execute(
+            f"SELECT * FROM plan_items WHERE task_id=? AND archived=0 ORDER BY {PLAN_DUE_ORDER}",
+            (task_id,),
+        ).fetchall()
+    ]
+    return jsonify(plan_task_payload(row, items))
+
+
+@app.route("/api/plans/tasks/<int:task_id>/restore", methods=["POST"])
+def api_plan_task_restore(task_id):
+    db = get_db()
+    row = db.execute("SELECT * FROM plan_tasks WHERE id=?", (task_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "任务不存在"}), 404
+    db.execute(
+        "UPDATE plan_tasks SET archived=0, done=0, archived_at='', updated_at=? WHERE id=?",
+        (datetime.now().isoformat(timespec="seconds"), task_id),
+    )
+    db.commit()
+    return jsonify({"ok": True, "id": task_id})
 
 
 @app.route("/api/plans/tasks/<int:task_id>", methods=["DELETE"])
 def api_plan_task_delete(task_id):
     db = get_db()
+    db.execute("DELETE FROM plan_items WHERE task_id=?", (task_id,))
     db.execute("DELETE FROM plan_tasks WHERE id=?", (task_id,))
     db.commit()
     return jsonify({"ok": True, "id": task_id})
@@ -1675,11 +1983,139 @@ def api_plan_tasks_batch_delete():
         return jsonify({"error": "没有选中任务"}), 400
     placeholders = ", ".join("?" for _ in cleaned)
     db = get_db()
+    db.execute(
+        f"DELETE FROM plan_items WHERE task_id IN ({placeholders})", tuple(cleaned)
+    )
     deleted = db.execute(
         f"DELETE FROM plan_tasks WHERE id IN ({placeholders})", tuple(cleaned)
     ).rowcount
     db.commit()
     return jsonify({"deleted": deleted})
+
+
+@app.route("/api/plans/projects/reorder", methods=["POST"])
+def api_plan_project_reorder():
+    """拖动换位：按传入顺序重写同列项目的 sort_order。"""
+    body = request.get_json(silent=True) or {}
+    ids = body.get("ids") or []
+    if not isinstance(ids, list) or not ids:
+        return jsonify({"error": "没有可排序的项目"}), 400
+    cleaned = []
+    for value in ids[:200]:
+        try:
+            cleaned.append(int(value))
+        except (TypeError, ValueError):
+            continue
+    if not cleaned:
+        return jsonify({"error": "没有可排序的项目"}), 400
+    db = get_db()
+    now = datetime.now().isoformat(timespec="seconds")
+    for index, project_id in enumerate(cleaned):
+        db.execute(
+            "UPDATE plan_projects SET sort_order=?, updated_at=? WHERE id=?",
+            (index, now, project_id),
+        )
+    db.commit()
+    return jsonify({"ok": True, "count": len(cleaned)})
+
+
+@app.route("/api/plans/items", methods=["POST"])
+def api_plan_item_create():
+    body = request.get_json(silent=True) or {}
+    try:
+        task_id = int(body.get("task_id"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "任务无效"}), 400
+    db = get_db()
+    task = db.execute("SELECT * FROM plan_tasks WHERE id=?", (task_id,)).fetchone()
+    if not task:
+        return jsonify({"error": "任务不存在"}), 404
+    title = str(body.get("title") or "").strip()[:60]
+    if not title:
+        return jsonify({"error": "事项名不能为空"}), 400
+    try:
+        due = parse_plan_date_optional(body.get("due_date"), "结束日期")
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    now = datetime.now().isoformat(timespec="seconds")
+    cursor = db.execute(
+        """INSERT INTO plan_items
+        (task_id, title, due_date, important, archived, archived_at, created_at, updated_at)
+        VALUES (?, ?, ?, ?, 0, '', ?, ?)""",
+        (task_id, title, due, 1 if body.get("important") else 0, now, now),
+    )
+    db.commit()
+    row = db.execute("SELECT * FROM plan_items WHERE id=?", (cursor.lastrowid,)).fetchone()
+    return jsonify(plan_item_payload(row))
+
+
+@app.route("/api/plans/items/<int:item_id>", methods=["PATCH"])
+def api_plan_item_update(item_id):
+    body = request.get_json(silent=True) or {}
+    db = get_db()
+    row = db.execute("SELECT * FROM plan_items WHERE id=?", (item_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "事项不存在"}), 404
+    fields = {}
+    if "title" in body:
+        title = str(body.get("title") or "").strip()[:60]
+        if not title:
+            return jsonify({"error": "事项名不能为空"}), 400
+        fields["title"] = title
+    if "due_date" in body:
+        try:
+            fields["due_date"] = parse_plan_date_optional(body.get("due_date"), "结束日期")
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+    if "important" in body:
+        fields["important"] = 1 if body.get("important") else 0
+    if "done" in body:
+        fields["done"] = 1 if body.get("done") else 0
+    if not fields:
+        return jsonify({"error": "没有可修改的字段"}), 400
+    fields["updated_at"] = datetime.now().isoformat(timespec="seconds")
+    assignments = ", ".join(f"{key}=?" for key in fields)
+    db.execute(f"UPDATE plan_items SET {assignments} WHERE id=?", tuple(fields.values()) + (item_id,))
+    db.commit()
+    row = db.execute("SELECT * FROM plan_items WHERE id=?", (item_id,)).fetchone()
+    return jsonify(plan_item_payload(row))
+
+
+@app.route("/api/plans/items/<int:item_id>", methods=["DELETE"])
+def api_plan_item_delete(item_id):
+    db = get_db()
+    db.execute("DELETE FROM plan_items WHERE id=?", (item_id,))
+    db.commit()
+    return jsonify({"ok": True, "id": item_id})
+
+
+@app.route("/api/plans/items/<int:item_id>/archive", methods=["POST"])
+def api_plan_item_archive(item_id):
+    db = get_db()
+    row = db.execute("SELECT * FROM plan_items WHERE id=?", (item_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "事项不存在"}), 404
+    now = datetime.now().isoformat(timespec="seconds")
+    db.execute(
+        "UPDATE plan_items SET archived=1, archived_at=?, updated_at=? WHERE id=?",
+        (now, now, item_id),
+    )
+    db.commit()
+    return jsonify({"ok": True, "id": item_id})
+
+
+@app.route("/api/plans/items/<int:item_id>/restore", methods=["POST"])
+def api_plan_item_restore(item_id):
+    db = get_db()
+    row = db.execute("SELECT * FROM plan_items WHERE id=?", (item_id,)).fetchone()
+    if not row:
+        return jsonify({"error": "事项不存在"}), 404
+    db.execute(
+        "UPDATE plan_items SET archived=0, archived_at='', updated_at=? WHERE id=?",
+        (datetime.now().isoformat(timespec="seconds"), item_id),
+    )
+    db.commit()
+    return jsonify({"ok": True, "id": item_id})
 
 
 @app.route("/api/health")

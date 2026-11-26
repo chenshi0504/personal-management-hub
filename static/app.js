@@ -11,7 +11,7 @@ const defaultDateValue = /^\d{4}-\d{2}-\d{2}$/.test(linkedDate)
   && toDateValue(new Date(`${linkedDate}T12:00:00`)) === linkedDate
   ? linkedDate : (todayValue >= NEW_SCHEME_START ? todayValue : NEW_SCHEME_START);
 const defaultMonth = defaultDateValue.slice(0, 7);
-const state = { month: defaultMonth, payload: null, selectedDate: defaultDateValue };
+const state = { month: defaultMonth, payload: null, selectedDate: linkedDate && /^\d{4}-\d{2}-\d{2}$/.test(linkedDate) ? linkedDate : "", manualOpen: false };
 const $ = (selector) => document.querySelector(selector);
 let pickerMonth = defaultMonth;
 // 横坐标上「本月第几个周一」在 records 里的下标，供周时长标注定位
@@ -155,6 +155,123 @@ function setQuickSaveState(text, saved = false) {
   state.classList.toggle("is-saved", saved);
 }
 
+// 只看颜色一一对应的四类：科研→深绿、开发→浅绿、其它事务→黄、运动娱乐→蓝。
+// 陪伴亲友（绿）、其他事项（灰）不在这四类里，不导入。
+const SCHEDULE_TO_STUDY = {
+  research: "llm",
+  dev: "research",
+  admin: "work",
+  sport: "sport",
+};
+
+function weekStartOfDay(day) {
+  const target = new Date(`${day}T12:00:00`);
+  const offset = (target.getDay() + 6) % 7;
+  target.setDate(target.getDate() - offset);
+  return toDateValue(target);
+}
+
+function clockSpan(start, end) {
+  const parse = (value) => {
+    const matched = /^(\d{2}):(\d{2})$/.exec(value || "");
+    return matched ? Number(matched[1]) * 60 + Number(matched[2]) : null;
+  };
+  const from = parse(start);
+  let to = parse(end);
+  if (from === null || to === null) return 0;
+  if (to <= from) to += 24 * 60;
+  return to - from;
+}
+
+// 只算当天已勾选完成的分时段事项，计划中的不导入
+async function readScheduleDay(day) {
+  const data = await api(`/api/schedule/week?start=${weekStartOfDay(day)}`);
+  const buckets = { llm: 0, research: 0, work: 0, sport: 0 };
+  let count = 0;
+  for (const item of data.items || []) {
+    if (item.date !== day || !item.done || item.kind !== "block") continue;
+    const target = SCHEDULE_TO_STUDY[item.category];
+    if (!target) continue;
+    const minutes = clockSpan(item.start, item.end);
+    if (minutes <= 0) continue;
+    buckets[target] += minutes;
+    count += 1;
+  }
+  return {
+    count,
+    llm: buckets.llm / 60,
+    research: buckets.research / 60,
+    work: buckets.work / 60,
+    sport: buckets.sport / 60,
+  };
+}
+
+// 运动时长取当月训练接口里当天的记录
+async function readTrainingDay(day) {
+  const data = await api(`/api/training/month?month=${day.slice(0, 7)}`);
+  const entry = (data.records || []).find((item) => item.date === day);
+  const minutes = Number(entry?.record?.minutes) || 0;
+  return { minutes, hours: round2(minutes / 60), entries: entry?.record?.activity ? [entry.record.activity] : [] };
+}
+
+/* 时间统计的「导入」：从当天日志或运动记录取数，填进表单，仍要点保存 */
+async function importDay() {
+  const day = state.selectedDate || $("#quickDate").value;
+  if (!day) {
+    setQuickSaveState("先在左边选一个日期", false);
+    return;
+  }
+  const button = $("#importJournal");
+  button.disabled = true;
+  try {
+    const data = await readScheduleDay(day);
+    if (!data.count) {
+      setQuickSaveState(`${day} 没有已完成的日程`, false);
+      return;
+    }
+    // 运动平台里有更准确的记录时，以它为准
+    let sport = data.sport;
+    let sportFromTraining = false;
+    try {
+      const training = await readTrainingDay(day);
+      if (training.minutes > 0) {
+        sport = training.hours;
+        sportFromTraining = true;
+      }
+    } catch (error) {
+      /* 拿不到运动记录就按日程算 */
+    }
+    if (!state.manualOpen) {
+      state.manualOpen = true;
+      applyManualOpen();
+    }
+    $("#quickLlm").value = normalizeTime(data.llm);
+    $("#quickResearch").value = normalizeTime(data.research);
+    $("#quickWork").value = normalizeTime(data.work);
+    $("#quickNewSport").value = normalizeTime(sport);
+    const total = round2(data.llm + data.research + data.work + sport);
+    setQuickSaveState(
+      `已导入 ${data.count} 项已完成日程，共 ${formatTime(total)}h${sportFromTraining ? "（运动按运动记录）" : ""}`,
+      false,
+    );
+  } catch (error) {
+    setQuickSaveState(`导入失败：${error.message}`, false);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+// 手动填写默认收起，点「手动填写」才展开
+function applyManualOpen() {
+  const record = state.payload?.records.find((item) => item.study_date === state.selectedDate);
+  const isNew = record ? record.scheme === "new" : true;
+  $("#legacyValues").hidden = isNew || !state.manualOpen;
+  $("#newValues").hidden = !isNew || !state.manualOpen;
+  const toggle = $("#manualToggle");
+  toggle.textContent = state.manualOpen ? "收起填写" : "手动填写";
+  toggle.setAttribute("aria-expanded", String(state.manualOpen));
+}
+
 function selectQuickRecord(dateValue) {
   const record = state.payload?.records.find((item) => item.study_date === dateValue);
   if (!record) return;
@@ -168,8 +285,8 @@ function selectQuickRecord(dateValue) {
   $("#dateTriggerText").textContent = `${day} 日 · ${record.weekday}`;
   $("#dateTrigger").setAttribute("aria-label", `选择记录日期，当前 ${day} 日 ${record.weekday}`);
 
-  $("#legacyValues").hidden = isNew;
-  $("#newValues").hidden = !isNew;
+  applyManualOpen();
+  $("#importJournal").disabled = false;
   // 可编辑时吸附到 0.5h；只读历史数据按原值保留 1 位小数
   const display = (value) => formatTime(editable ? normalizeTime(value) : value);
   if (isNew) {
@@ -568,7 +685,8 @@ function renderWeekTotals() {
     const end = hasNext ? weekAxisStarts[position + 1] - 1 : payload.records.length - 1;
     const slice = payload.records.slice(start, end + 1);
     if (!slice.length) return;
-    const hours = round2(slice.reduce((sum, record) => sum + (Number(record.study_total) || 0), 0));
+    // 周总含运动，分级阈值（48 / 60）保持不变
+    const hours = round2(slice.reduce((sum, record) => sum + (Number(record.total) || 0), 0));
     // 文字居中放在「本周周一」与「下周一」之间，最后一周放在本周周一到月末之间
     const leftEdge = bounds[start].center;
     const rightEdge = hasNext ? bounds[weekAxisStarts[position + 1]].center : bounds[end].right;
@@ -578,7 +696,7 @@ function renderWeekTotals() {
     node.textContent = weekTotalText(hours);
     const [fromMonth, fromDay] = slice[0].study_date.split("-").slice(1).map(Number);
     const [toMonth, toDay] = slice[slice.length - 1].study_date.split("-").slice(1).map(Number);
-    node.title = `${fromMonth} 月 ${fromDay} 日–${toMonth} 月 ${toDay} 日 · 学习合计 ${formatTime(hours)} 小时（不含运动）`;
+    node.title = `${fromMonth} 月 ${fromDay} 日–${toMonth} 月 ${toDay} 日 · 学习 + 运动合计 ${formatTime(hours)} 小时`;
     node.style.left = `${(leftEdge + rightEdge) / 2 - axisRect.left}px`;
     axis.appendChild(node);
     // 间隙太窄就隐藏，避免压住周序号；时长仍可从周序号的 title 读到
@@ -587,7 +705,7 @@ function renderWeekTotals() {
       const mark = cells[start];
       if (mark) {
         if (!mark.dataset.baseTitle) mark.dataset.baseTitle = mark.title;
-        mark.title = `${mark.dataset.baseTitle} · 本周学习 ${formatTime(hours)} 小时`;
+        mark.title = `${mark.dataset.baseTitle} · 本周 ${formatTime(hours)} 小时（含运动）`;
       }
     }
   });
@@ -743,10 +861,11 @@ function renderMonth(payload) {
   $("#maxDay").textContent = formatTime(payload.totals.max_day);
   renderRhythm(payload);
   $("#saveState").textContent = `已记录 ${payload.totals.active_days} 天 · 实时同步`;
-  const selectedRecord = payload.records.find((item) => item.study_date === state.selectedDate)
-    || payload.records.find((item) => item.editable)
-    || payload.records[0];
-  selectQuickRecord(selectedRecord.study_date);
+  // 不自动选中：先点柱子或日期，导入按钮才会亮
+  if (state.selectedDate) {
+    const record = payload.records.find((item) => item.study_date === state.selectedDate);
+    if (record) selectQuickRecord(state.selectedDate);
+  }
 }
 
 async function saveQuickRecord(event) {
@@ -803,6 +922,11 @@ async function loadMonth() {
 }
 
 $("#quickEditor").addEventListener("submit", saveQuickRecord);
+$("#manualToggle").addEventListener("click", () => {
+  state.manualOpen = !state.manualOpen;
+  applyManualOpen();
+});
+$("#importJournal").addEventListener("click", importDay);
 ["#quickMorning", "#quickAfternoon", "#quickEvening", "#quickSport", "#quickLlm", "#quickResearch", "#quickWork", "#quickNewSport"].forEach((selector) => {
   const input = $(selector);
   input.addEventListener("change", () => {

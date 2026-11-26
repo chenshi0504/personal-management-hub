@@ -5,8 +5,8 @@ body.training-page {
   --strength: #f2b544;
   --combat: #fa2d55;
   --rest: #3f9e6a;
-  --aerobic-text: #c0f2d1;
-  --strength-text: #f7d795;
+  --aerobic-text: var(--mx-green-text);
+  --strength-text: var(--mx-warm-text);
   --combat-text: #ff9cae;
   --rest-text: #a9dcbf;
   --record: #32d74b;
@@ -20,7 +20,7 @@ body.training-page {
 
 .brand-mark.train {
   background: linear-gradient(160deg, #6bb6ea, #3b8fd4 58%, #1f6ba8);
-  box-shadow: 0 6px 16px rgba(74, 159, 224, .32), inset 0 1px 0 rgba(255, 255, 255, .4);
+  box-shadow: 0 6px 16px rgba(74, 159, 224, .32), inset 0 1px 0 var(--mx-fill-strong);
 }
 .live-indicator.train { background: rgba(74, 159, 224, .12); color: #8fc9f0; }
 .live-indicator.train i { background: #4a9fe0; box-shadow: 0 0 8px rgba(74, 159, 224, .85); }
@@ -45,8 +45,8 @@ body.training-page {
   padding: 18px 24px;
   border: 1px solid var(--line-strong);
   border-radius: 18px;
-  background: linear-gradient(135deg, rgba(74, 159, 224, .13), rgba(20, 21, 25, .94) 48%);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .05);
+  background: linear-gradient(135deg, rgba(74, 159, 224, .13), var(--mx-elev) 48%);
+  box-shadow: inset 0 1px 0 var(--mx-fill-weak);
 }
 .training-page .eyebrow { color: #7cc0f5; }
 .train-title h1 { margin-top: 7px; font-size: 23px; font-weight: 600; letter-spacing: .2px; }
@@ -56,10 +56,10 @@ body.training-page {
   padding: 10px 14px;
   border: 1px solid var(--line);
   border-radius: 12px;
-  background: rgba(255, 255, 255, .03);
+  background: var(--mx-fill-weak);
 }
 .metric span { display: block; color: var(--soft); font-size: 10.5px; letter-spacing: .4px; }
-.metric strong { display: inline-block; margin-top: 2px; color: #dceaf7; font: 600 21px/1.2 var(--fs-num); }
+.metric strong { display: inline-block; margin-top: 2px; color: var(--mx-blue-text); font: 600 21px/1.2 var(--fs-num); }
 .metric small { margin-left: 4px; color: var(--soft); font-size: 10px; }
 
 /* 日历 */
@@ -92,15 +92,15 @@ body.training-page {
   border: 1px solid var(--line);
   border-radius: 11px;
   color: var(--text);
-  background: rgba(255, 255, 255, .018);
+  background: var(--mx-fill-weak);
   text-align: left;
   transition: background .18s var(--ease), border-color .18s var(--ease);
 }
 .cal-day.is-empty { border-color: transparent; background: transparent; min-height: 0; }
-.cal-day.is-blank { border-style: dashed; border-color: rgba(255, 255, 255, .14); }
+.cal-day.is-blank { border-style: dashed; border-color: var(--mx-fill-strong); }
 .cal-day[data-kind="aerobic"] {
   --cat: #8ee5ae;
-  --cat-text: #c0f2d1;
+  --cat-text: var(--mx-green-text);
   --cat-line: rgba(142, 229, 174, .40);
   --cat-line-strong: rgba(142, 229, 174, .72);
   --cat-fill: rgba(142, 229, 174, .055);
@@ -108,7 +108,7 @@ body.training-page {
 }
 .cal-day[data-kind="strength"] {
   --cat: #f2b544;
-  --cat-text: #f7d795;
+  --cat-text: var(--mx-warm-text);
   --cat-line: rgba(242, 181, 68, .40);
   --cat-line-strong: rgba(242, 181, 68, .72);
   --cat-fill: rgba(242, 181, 68, .055);
@@ -116,7 +116,7 @@ body.training-page {
 }
 .cal-day[data-kind="combat"] {
   --cat: #fa2d55;
-  --cat-text: #ff9cae;
+  --cat-text: var(--combat-text);
   --cat-line: rgba(250, 45, 85, .42);
   --cat-line-strong: rgba(250, 45, 85, .74);
   --cat-fill: rgba(250, 45, 85, .055);
@@ -124,26 +124,26 @@ body.training-page {
 }
 .cal-day[data-kind="rest"] {
   --cat: #3f9e6a;
-  --cat-text: #a9dcbf;
+  --cat-text: var(--rest-text);
   --cat-line: rgba(63, 158, 106, .42);
   --cat-line-strong: rgba(63, 158, 106, .74);
   --cat-fill: rgba(63, 158, 106, .06);
   --cat-fill-strong: rgba(63, 158, 106, .19);
 }
 .cal-day.is-planned {
-  border-color: var(--cat-line, rgba(255, 255, 255, .14));
+  border-color: var(--cat-line, var(--mx-fill-strong));
   background: transparent;
 }
 .cal-day.is-recorded {
-  border-color: var(--cat-line-strong, rgba(255, 255, 255, .2));
-  background: var(--cat-fill-strong, rgba(255, 255, 255, .04));
+  border-color: var(--cat-line-strong, var(--mx-fill-strong));
+  background: var(--cat-fill-strong, var(--mx-fill-weak));
 }
 .cal-day.is-blank:hover {
   background: var(--surface-2);
   border-color: var(--line-strong);
 }
 .cal-day.is-planned:hover, .cal-day.is-recorded:hover { filter: brightness(1.06); }
-.cal-day.is-active { outline: 2px solid rgba(255, 255, 255, .85); outline-offset: 2px; }
+.cal-day.is-active { outline: 2px solid var(--mx-fill-strong); outline-offset: 2px; }
 .cal-day.is-today .cal-date { color: #7cc0f5; }
 .cal-day.is-today::after {
   content: "";
@@ -156,7 +156,7 @@ body.training-page {
   background: currentColor;
   opacity: .8;
 }
-.cal-date { color: #e8e9ee; font-size: 13px; font-weight: 600; }
+.cal-date { color: var(--mx-text); font-size: 13px; font-weight: 600; }
 .cal-type-line {
   display: flex;
   align-items: center;
@@ -196,10 +196,10 @@ body.training-page {
   width: 26px;
   height: 26px;
   padding: 0;
-  border: 1px solid rgba(255, 255, 255, .16);
+  border: 1px solid var(--mx-fill-strong);
   border-radius: 8px;
   color: #cfd0d6;
-  background: rgba(255, 255, 255, .05);
+  background: var(--mx-fill-weak);
   transition: background .18s var(--ease), border-color .18s var(--ease), color .18s var(--ease);
 }
 .rec-entry svg {
@@ -211,7 +211,7 @@ body.training-page {
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.rec-entry:hover { color: #d6ffe4; border-color: rgba(50, 215, 75, .6); background: rgba(50, 215, 75, .16); }
+.rec-entry:hover { color: var(--mx-green-text); border-color: rgba(50, 215, 75, .6); background: rgba(50, 215, 75, .16); }
 
 .cal-foot {
   display: flex;
@@ -243,7 +243,7 @@ body.training-page {
 .cal-legend { display: flex; align-items: center; gap: 12px; margin-left: auto; }
 .cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .state-dot { width: 7px; height: 7px; border-radius: 2px; }
-.state-dot.blank { background: transparent; border: 1px dashed rgba(255, 255, 255, .35); }
+.state-dot.blank { background: transparent; border: 1px dashed var(--mx-fill-strong); }
 .state-dot.planned { background: transparent; border: 1px solid var(--muted); }
 .state-dot.recorded { background: var(--muted); }
 
@@ -319,7 +319,7 @@ body.training-page {
   font-size: 12.5px;
 }
 .seg-btn.active { color: var(--aerobic-text); background: rgba(142, 229, 174, .18); box-shadow: inset 0 0 0 1px rgba(142, 229, 174, .5); }
-.seg-btn[data-kind="strength"].active { color: #f8dfae; background: rgba(242, 181, 68, .18); box-shadow: inset 0 0 0 1px rgba(242, 181, 68, .4); }
+.seg-btn[data-kind="strength"].active { color: var(--mx-warm-text); background: rgba(242, 181, 68, .18); box-shadow: inset 0 0 0 1px rgba(242, 181, 68, .4); }
 .seg-btn[data-kind="combat"].active { color: #ffc0cb; background: rgba(250, 45, 85, .18); box-shadow: inset 0 0 0 1px rgba(250, 45, 85, .4); }
 .seg-btn[data-kind="rest"].active { color: var(--rest-text); background: rgba(63, 158, 106, .2); box-shadow: inset 0 0 0 1px rgba(63, 158, 106, .5); }
 
@@ -334,7 +334,7 @@ body.training-page {
 }
 .chip:hover { border-color: var(--line-strong); color: var(--text); }
 .chip.active { color: var(--aerobic-text); border-color: rgba(142, 229, 174, .7); background: rgba(142, 229, 174, .18); }
-.chips[data-kind="strength"] .chip.active { color: #f8dfae; border-color: rgba(242, 181, 68, .7); background: rgba(242, 181, 68, .18); }
+.chips[data-kind="strength"] .chip.active { color: var(--mx-warm-text); border-color: rgba(242, 181, 68, .7); background: rgba(242, 181, 68, .18); }
 .chips[data-kind="combat"] .chip.active { color: #ffc0cb; border-color: rgba(250, 45, 85, .7); background: rgba(250, 45, 85, .18); }
 .chips[data-kind="rest"] .chip.active { color: var(--rest-text); border-color: rgba(63, 158, 106, .7); background: rgba(63, 158, 106, .2); }
 .chips-hint { color: var(--soft); font-size: 11.5px; line-height: 32px; }
@@ -399,7 +399,7 @@ body.training-page {
   font-size: 8px;
   line-height: 1;
 }
-.time-step:hover { color: #c9f4d4; background: rgba(50, 215, 75, .14); }
+.time-step:hover { color: var(--mx-green-text); background: rgba(50, 215, 75, .14); }
 .seg-dash { color: var(--soft); font-size: 11px; }
 .seg-dur { flex: none; width: 96px; color: var(--soft); font-size: 11px; text-align: right; }
 .seg-remove {
@@ -414,7 +414,7 @@ body.training-page {
   font-size: 15px;
   line-height: 1;
 }
-.seg-remove:hover { color: #ff7892; background: rgba(255, 255, 255, .07); }
+.seg-remove:hover { color: #ff7892; background: var(--mx-fill); }
 .add-seg { align-self: flex-start; padding: 3px 0; border: 0; color: #8fe0a4; background: transparent; font-size: 12px; }
 
 .score-stack { display: flex; flex-direction: column; gap: 8px; }
@@ -437,7 +437,7 @@ body.training-page {
   padding: 0 4px;
   border: 1px solid var(--line);
   border-radius: 6px;
-  color: #c9f4d4;
+  color: var(--mx-green-text);
   background: rgba(0, 0, 0, .25);
   font-size: 12.5px;
   text-align: center;
@@ -510,7 +510,7 @@ body.training-page {
 
 .day-total { display: flex; align-items: baseline; gap: 8px; }
 .day-total span { color: var(--soft); font-size: 11px; }
-.day-total b { color: #e7f2fb; font: 600 19px/1.2 var(--fs-num); }
+.day-total b { color: var(--mx-blue-text); font: 600 19px/1.2 var(--fs-num); }
 .day-total small { color: var(--soft); font-size: 10.5px; }
 
 @media (max-width: 1100px) {

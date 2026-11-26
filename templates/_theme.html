@@ -1,0 +1,18 @@
+<script>
+  /* 主题要在首屏绘制前定下来，避免闪一下深色 */
+  (function () {
+    var root = document.documentElement;
+    var mode = "auto";
+    try { mode = localStorage.getItem("mgmt-theme") || "auto"; } catch (error) {}
+    var hour = 9;
+    try {
+      hour = Number(new Intl.DateTimeFormat("en-GB", {
+        timeZone: "Asia/Shanghai", hour: "2-digit", hour12: false
+      }).format(new Date()));
+    } catch (error) {}
+    var autoLight = hour >= 7 && hour < 17;
+    root.setAttribute("data-theme-mode", mode);
+    root.setAttribute("data-theme", mode === "light" || mode === "dark" ? mode : (autoLight ? "light" : "dark"));
+  })();
+</script>
+<link rel="stylesheet" href="/static/theme.css?v=13">
