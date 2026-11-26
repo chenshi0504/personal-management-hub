@@ -1539,7 +1539,7 @@ PLAN_PROJECT_ORDER = "pinned DESC, sort_order ASC, created_at, id"
 # 任务与事项同一套先后规则：有截止的按截止日期，没截止的按创建时间排在后面
 PLAN_DUE_ORDER = "(due_date = '') ASC, due_date ASC, created_at ASC, id"
 # 任务多两条：置顶优先，其次是每周重复的（会议这类要一直排在最上面）
-PLAN_TASK_ORDER = "pinned DESC, (repeat_weekday >= 0) DESC, (due_date = '') ASC, due_date ASC, created_at ASC, id"
+PLAN_TASK_ORDER = "done ASC, pinned DESC, (repeat_weekday >= 0) DESC, (due_date = '') ASC, due_date ASC, created_at ASC, id"
 WEEKDAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
 
