@@ -133,9 +133,10 @@ html[data-theme="light"] .plan-col {
   background: color-mix(in srgb, var(--cat-bright) 5%, #f7f8fa);
   border-color: color-mix(in srgb, var(--cat-bright) 24%, #e4e6ec);
 }
+/* 四列列头统一淡绿底，颜色只留给标题和圆点 */
 html[data-theme="light"] .col-head {
-  background: color-mix(in srgb, var(--cat-bright) 9%, transparent);
-  border-bottom-color: color-mix(in srgb, var(--cat-bright) 20%, #e4e6ec);
+  background: color-mix(in srgb, #1f7a46 7%, #f7f8fa);
+  border-bottom-color: color-mix(in srgb, #1f7a46 18%, #e4e6ec);
 }
 html[data-theme="light"] .proj {
   background: color-mix(in srgb, var(--cat-bright) 10%, #ffffff);

@@ -132,10 +132,11 @@ body.planner-page {
   gap: 8px;
   padding: 11px 13px;
   border-bottom: 1px solid var(--pl-line);
-  background: var(--mx-fill-weak);
+  /* 四列统一淡绿底，各列只靠标题和圆点区分颜色 */
+  background: color-mix(in srgb, #1f7a46 7%, var(--mx-panel));
 }
 .col-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--cat); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cat) 18%, transparent); }
-.col-head h2 { flex: 1; color: var(--cat-text); font-size: 13.5px; font-weight: 600; }
+.col-head h2 { flex: 1; color: var(--cat-text); font-size: 15px; font-weight: 600; letter-spacing: .2px; }
 .col-count { color: var(--pl-soft); font-size: 11px; font-variant-numeric: tabular-nums; }
 .col-add {
   width: 22px;
