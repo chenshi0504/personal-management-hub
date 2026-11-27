@@ -263,14 +263,19 @@ function projectCard(project, category) {
   card.append(head);
 
   const list = node("div", "task-list");
-  list.hidden = !open;
-  if (open) {
-    if (!project.tasks.length) list.append(node("p", "task-empty", "还没有任务"));
-    for (const task of project.tasks) list.append(taskRow(project, task));
-    const addTask = node("button", "task-add", "＋ 添加任务");
-    addTask.type = "button";
-    addTask.addEventListener("click", () => openTask(project, null));
-    list.append(addTask);
+  // 收起时只留点着灯泡的任务，这些不允许被收起来
+  const visibleTasks = open ? project.tasks : project.tasks.filter((task) => task.active);
+  list.hidden = !visibleTasks.length;
+  if (!open && visibleTasks.length) list.classList.add("is-pinned-list");
+  if (visibleTasks.length) {
+    if (open && !project.tasks.length) list.append(node("p", "task-empty", "还没有任务"));
+    for (const task of visibleTasks) list.append(taskRow(project, task));
+    if (open) {
+      const addTask = node("button", "task-add", "＋ 添加任务");
+      addTask.type = "button";
+      addTask.addEventListener("click", () => openTask(project, null));
+      list.append(addTask);
+    }
   }
   card.append(list);
   return card;
@@ -295,7 +300,7 @@ function memoList(tasks) {
 function taskRow(project, task) {
   const openItems = state.openTasks.has(task.id);
   const block = node("div", "task-block");
-  const row = node("div", "task" + (task.done ? " is-done" : ""));
+  const row = node("div", "task" + (task.done ? " is-done" : "") + (task.active ? " is-active" : ""));
 
   const caret = node("button", "task-caret" + (openItems ? " is-open" : ""));
   caret.type = "button";
@@ -357,6 +362,15 @@ function taskRow(project, task) {
   main.append(dueLine);
 
   const actions = node("div", "task-actions");
+  const lamp = node("button", "icon-btn is-lamp" + (task.active ? " is-on" : ""));
+  lamp.type = "button";
+  lamp.title = task.active ? "正在做，取消后可以收起" : "标记为正在做";
+  lamp.setAttribute("aria-label", lamp.title);
+  lamp.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.3a4.1 4.1 0 0 0-2.4 7.5c.4.3.6.7.6 1.1v.5h3.6v-.5c0-.4.2-.8.6-1.1A4.1 4.1 0 0 0 8 2.3Z"/><path d="M6.6 13.3h2.8"/></svg>';
+  lamp.addEventListener("click", (event) => {
+    event.stopPropagation();
+    patchTask(task.id, { active: !task.active });
+  });
   const pin = node("button", "icon-btn" + (task.pinned ? " is-on" : ""));
   pin.type = "button";
   pin.title = task.pinned ? "取消置顶" : "置顶";
@@ -372,7 +386,7 @@ function taskRow(project, task) {
     event.stopPropagation();
     deleteTask(task);
   });
-  actions.append(pin, del);
+  actions.append(lamp, pin, del);
 
   row.append(circle, main, actions);
   block.append(row);

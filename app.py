@@ -219,6 +219,9 @@ def init_db():
     if "repeat_weekday" not in task_columns:
         # -1 = 不重复；0–6 = 每周一…每周日
         db.execute("ALTER TABLE plan_tasks ADD COLUMN repeat_weekday INTEGER NOT NULL DEFAULT -1")
+    if "active" not in task_columns:
+        # 点亮灯泡 = 正在做；项目收起时这类任务仍然露出来
+        db.execute("ALTER TABLE plan_tasks ADD COLUMN active INTEGER NOT NULL DEFAULT 0")
     if "archived" not in task_columns:
         # 备忘录的独立任务勾完自动归档，进回收站可恢复
         db.execute("ALTER TABLE plan_tasks ADD COLUMN archived INTEGER NOT NULL DEFAULT 0")
@@ -1581,6 +1584,7 @@ def plan_task_payload(row, items=None):
         "repeat_weekday": repeat,
         "repeat_label": WEEKDAY_NAMES[repeat] if 0 <= repeat <= 6 else "",
         "created_at": row["created_at"],
+        "active": bool(row["active"]) if "active" in row.keys() else False,
         "archived": bool(row["archived"]) if "archived" in row.keys() else False,
         "archived_at": (row["archived_at"] if "archived_at" in row.keys() else "") or "",
         "items": items,
@@ -1925,6 +1929,8 @@ def api_plan_task_update(task_id):
             fields["archived_at"] = (
                 datetime.now().isoformat(timespec="seconds") if done_value else ""
             )
+    if "active" in body:
+        fields["active"] = 1 if body.get("active") else 0
     if "pinned" in body:
         fields["pinned"] = 1 if body.get("pinned") else 0
     if not fields:

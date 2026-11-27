@@ -844,3 +844,21 @@ html[data-theme="light"] .due-count { background: #d3223f; }
 @media (max-width: 980px) {
   .due-strip { display: none; }
 }
+
+/* 点亮灯泡 = 正在做：黄框 + 一点底光，收起项目时也不隐藏 */
+.task.is-active {
+  border-radius: 9px;
+  background: rgba(242, 199, 68, .07);
+  box-shadow: inset 0 0 0 1px rgba(242, 199, 68, .75), 0 0 12px rgba(242, 199, 68, .12);
+}
+html[data-theme="light"] .task.is-active {
+  background: rgba(242, 199, 68, .12);
+  box-shadow: inset 0 0 0 1px rgba(190, 144, 20, .8), 0 0 10px rgba(242, 199, 68, .18);
+}
+.icon-btn.is-lamp { color: var(--mx-text-4); }
+.icon-btn.is-lamp:hover { color: #f2c744; }
+.icon-btn.is-lamp.is-on {
+  color: #f2c744;
+  filter: drop-shadow(0 0 5px rgba(242, 199, 68, .65));
+}
+.task-list.is-pinned-list { padding-top: 2px; }
