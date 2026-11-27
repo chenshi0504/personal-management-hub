@@ -158,12 +158,13 @@ body.planner-page {
   position: relative;
   margin-bottom: 10px;
   overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--cat-bright) 26%, transparent);
+  /* 所有卡片统一深绿底，颜色只留给标题和圆点 */
+  border: 1px solid color-mix(in srgb, #1f7a46 34%, transparent);
   border-radius: 11px;
-  background: color-mix(in srgb, var(--cat-bright) 10%, #0b0c0f);
+  background: color-mix(in srgb, #1f7a46 16%, #0b0c0f);
   transition: border-color .16s ease, background .16s ease;
 }
-.proj:hover { background: color-mix(in srgb, var(--cat-bright) 13%, #0b0c0f); }
+.proj:hover { background: color-mix(in srgb, #1f7a46 21%, #0b0c0f); }
 /* 重点项目：最多 2 个，统一红框，不跟分类色走 */
 .proj.is-pinned {
   border-color: #fa2d55;
