@@ -13,6 +13,14 @@
     var autoLight = hour >= 7 && hour < 17;
     root.setAttribute("data-theme-mode", mode);
     root.setAttribute("data-theme", mode === "light" || mode === "dark" ? mode : (autoLight ? "light" : "dark"));
+    // 横滑切板块时记下方向，新页面第一帧就带着它做过渡
+    try {
+      var navDir = sessionStorage.getItem("nav-dir");
+      if (navDir) {
+        root.setAttribute("data-nav-dir", navDir);
+        sessionStorage.removeItem("nav-dir");
+      }
+    } catch (error) {}
   })();
 </script>
-<link rel="stylesheet" href="/static/theme.css?v=13">
+<link rel="stylesheet" href="/static/theme.css?v=16">

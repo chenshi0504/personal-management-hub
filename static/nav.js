@@ -158,8 +158,11 @@
     if (locked) return;
     locked = true;
     const next = (current + direction + ORDER.length) % ORDER.length;
-    document.documentElement.classList.add("is-tab-sliding");
-    setTimeout(() => { location.href = ORDER[next]; }, 120);
+    const dir = direction > 0 ? "next" : "prev";
+    document.documentElement.setAttribute("data-nav-dir", dir);
+    try { sessionStorage.setItem("nav-dir", dir); } catch (error) {}
+    // 交给浏览器的跨文档过渡做滑入滑出，跳转本身立刻发生
+    location.href = ORDER[next];
   }
 
   window.addEventListener("wheel", (event) => {

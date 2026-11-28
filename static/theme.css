@@ -355,5 +355,28 @@ html[data-theme="light"] .icon-btn:hover,
 html[data-theme="light"] .item-actions .icon-btn:hover,
 html[data-theme="light"] .hb-entry-actions button:hover { color: var(--mx-text); }
 
-/* 横滑切板块时的淡出过渡 */
-html.is-tab-sliding body { opacity: 0; transition: opacity .12s ease; }
+/* 横滑切板块：跨文档视图过渡，旧页左滑出、新页右侧滑入 */
+@view-transition { navigation: auto; }
+
+::view-transition-group(root) { animation-duration: .34s; animation-timing-function: cubic-bezier(.32, .72, 0, 1); }
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: .34s;
+  animation-timing-function: cubic-bezier(.32, .72, 0, 1);
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+
+@keyframes vt-out-left { to { transform: translateX(-22%); opacity: .35; } }
+@keyframes vt-in-right { from { transform: translateX(22%); opacity: .35; } }
+@keyframes vt-out-right { to { transform: translateX(22%); opacity: .35; } }
+@keyframes vt-in-left { from { transform: translateX(-22%); opacity: .35; } }
+
+html[data-nav-dir="next"]::view-transition-old(root) { animation-name: vt-out-left; }
+html[data-nav-dir="next"]::view-transition-new(root) { animation-name: vt-in-right; }
+html[data-nav-dir="prev"]::view-transition-old(root) { animation-name: vt-out-right; }
+html[data-nav-dir="prev"]::view-transition-new(root) { animation-name: vt-in-left; }
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
+}
