@@ -1930,7 +1930,14 @@ def api_plan_task_update(task_id):
                 datetime.now().isoformat(timespec="seconds") if done_value else ""
             )
     if "active" in body:
-        fields["active"] = 1 if body.get("active") else 0
+        active_value = 1 if body.get("active") else 0
+        if active_value:
+            lit = db.execute(
+                "SELECT COUNT(*) FROM plan_tasks WHERE active=1 AND id<>?", (task_id,)
+            ).fetchone()[0]
+            if lit >= 5:
+                return jsonify({"error": "最多同时点亮 5 个任务，先取消一个"}), 400
+        fields["active"] = active_value
     if "pinned" in body:
         fields["pinned"] = 1 if body.get("pinned") else 0
     if not fields:

@@ -297,6 +297,17 @@ function memoList(tasks) {
   return list;
 }
 
+// 当前点亮了几个任务（项目内 + 备忘录，合计最多 5 个）
+function activeTaskCount() {
+  const projects = state.data?.projects || [];
+  const standalone = state.data?.standalone_tasks || [];
+  let count = 0;
+  for (const project of projects) {
+    count += project.tasks.filter((item) => item.active).length;
+  }
+  return count + standalone.filter((item) => item.active).length;
+}
+
 function taskRow(project, task) {
   const openItems = state.openTasks.has(task.id);
   const block = node("div", "task-block");
@@ -369,6 +380,11 @@ function taskRow(project, task) {
   lamp.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.3a4.1 4.1 0 0 0-2.4 7.5c.4.3.6.7.6 1.1v.5h3.6v-.5c0-.4.2-.8.6-1.1A4.1 4.1 0 0 0 8 2.3Z"/><path d="M6.6 13.3h2.8"/></svg>';
   lamp.addEventListener("click", (event) => {
     event.stopPropagation();
+    // 同一时间最多点亮 5 个，超出就不让点
+    if (!task.active && activeTaskCount() >= 5) {
+      toast("最多同时点亮 5 个任务，先取消一个");
+      return;
+    }
     patchTask(task.id, { active: !task.active });
   });
   const pin = node("button", "icon-btn" + (task.pinned ? " is-on" : ""));
